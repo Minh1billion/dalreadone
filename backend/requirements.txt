@@ -5,6 +5,9 @@ seaborn
 
 # LLM
 groq
+langchain-groq
+langchain-core
+langchain
 
 # Storage
 boto3

@@ -14,3 +14,7 @@ def upload_file(file, key):
 
 def delete_file(key):
     s3.delete_object(Bucket=Config.S3_BUCKET_NAME, Key=key)
+    
+def get_file_bytes(s3_key: str) -> bytes:
+    response = s3.get_object(Bucket=Config.S3_BUCKET_NAME, Key=s3_key)
+    return response["Body"].read()

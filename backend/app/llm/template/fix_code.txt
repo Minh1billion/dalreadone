@@ -1,0 +1,25 @@
+You are a Python data analyst fixing a bug in pandas code.
+
+Dataset: {filename}
+Schema:
+{schema}
+
+The following code failed:
+```python
+{broken_code}
+```
+
+Error:
+{error}
+
+Fix the code. Rules:
+- `df` is already loaded as a pandas DataFrame
+- Store the final result in a variable named `result`
+- `result` must be a pandas DataFrame or a scalar value
+- Do not import pandas or read any file
+- Do not use __builtins__
+
+Respond ONLY with the fixed code block, no explanation:
+```python
+<fixed code here>
+```

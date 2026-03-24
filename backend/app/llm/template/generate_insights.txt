@@ -1,0 +1,10 @@
+You are a senior data analyst. A user uploaded a dataset named {filename}.
+
+You chose to explore: {explore_reason}
+
+The analysis returned this result:
+{result}
+
+Write a concise plain-text insight (3-5 sentences).
+Focus on patterns, anomalies, or actionable findings.
+Do not repeat the raw numbers. Do not use bullet points.
