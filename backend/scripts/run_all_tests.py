@@ -3,11 +3,21 @@ import sys
 import os
 
 TESTS = [
+    ("S3 Connection",  "app/test/test_s3.py"),
+    ("Groq Connection", "app/test/test_groq.py"),
     ("DB Connection",   "app/test/test_db.py"),
     ("Auth Flow",       "app/test/test_auth.py"),
     ("Project Flow",    "app/test/test_projects.py"),
     ("File Flow",       "app/test/test_files.py"),
 ]
+
+from app.db.session import engine
+from app.models.base import Base
+
+def reset_db():
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    print("Database reset!")
 
 
 def run(label: str, path: str) -> bool:
@@ -50,4 +60,8 @@ if __name__ == "__main__":
 
     print()
     all_passed = all(ok for _, ok in results) and skipped == 0
+    print("====== RESET DATABASE =======")
+    reset_db()
+    
     sys.exit(0 if all_passed else 1)
+    

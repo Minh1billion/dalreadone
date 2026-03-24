@@ -2,6 +2,8 @@ import requests
 
 BASE = "http://localhost:8000"
 
+CREATED_PROJECT_IDS = []
+
 
 def get_auth_header(username="proj_testuser", password="123456") -> tuple[dict, requests.Session]:
     session = requests.Session()
@@ -11,12 +13,21 @@ def get_auth_header(username="proj_testuser", password="123456") -> tuple[dict, 
     return {"Authorization": f"Bearer {token}"}, session
 
 
-# CREATE 
-def test_create_project():
-    headers, _ = get_auth_header()
-    res = requests.post(f"{BASE}/projects", json={"name": "My Project"}, headers=headers)
+def create_project(headers, name="My Project") -> dict:
+    """Helper tạo project và tự động track để cleanup sau."""
+    res = requests.post(f"{BASE}/projects", json={"name": name}, headers=headers)
     assert res.status_code == 201, res.text
     data = res.json()
+    CREATED_PROJECT_IDS.append((headers, data["id"]))
+    return data
+
+
+# CREATE 
+
+def test_create_project():
+    headers, _ = get_auth_header()
+    data = create_project(headers, "My Project")
+
     assert data["name"] == "My Project"
     assert "id" in data
     assert "created_at" in data
@@ -32,9 +43,10 @@ def test_create_project_unauthorized():
 
 
 # LIST 
+
 def test_list_projects():
     headers, _ = get_auth_header()
-    requests.post(f"{BASE}/projects", json={"name": "List Test Project"}, headers=headers)
+    create_project(headers, "List Test Project")  # tracked
 
     res = requests.get(f"{BASE}/projects", headers=headers)
     assert res.status_code == 200, res.text
@@ -45,12 +57,11 @@ def test_list_projects():
 
 
 def test_list_projects_only_own():
-    """User A không thấy project của User B"""
     headers_a, _ = get_auth_header("proj_user_a", "123456")
     headers_b, _ = get_auth_header("proj_user_b", "123456")
 
-    res_a = requests.post(f"{BASE}/projects", json={"name": "User A Project"}, headers=headers_a)
-    project_id_a = res_a.json()["id"]
+    data_a = create_project(headers_a, "User A Project")  # tracked
+    project_id_a = data_a["id"]
 
     res_b = requests.get(f"{BASE}/projects", headers=headers_b)
     ids_b = [p["id"] for p in res_b.json()]
@@ -77,13 +88,12 @@ def test_get_project_not_found():
     assert res.status_code == 404, res.text
     print("Get project not found OK: 404")
 
-
 def test_get_project_wrong_owner():
     headers_a, _ = get_auth_header("proj_user_a", "123456")
     headers_b, _ = get_auth_header("proj_user_b", "123456")
 
-    res = requests.post(f"{BASE}/projects", json={"name": "A's project"}, headers=headers_a)
-    project_id = res.json()["id"]
+    data = create_project(headers_a, "A's project")  # tracked
+    project_id = data["id"]
 
     res = requests.get(f"{BASE}/projects/{project_id}", headers=headers_b)
     assert res.status_code == 403, res.text
@@ -105,13 +115,12 @@ def test_update_project():
     assert data["name"] == "Renamed Project"
     print("Update project OK:", data)
 
-
 def test_update_project_wrong_owner():
     headers_a, _ = get_auth_header("proj_user_a", "123456")
     headers_b, _ = get_auth_header("proj_user_b", "123456")
 
-    res = requests.post(f"{BASE}/projects", json={"name": "A's project"}, headers=headers_a)
-    project_id = res.json()["id"]
+    data = create_project(headers_a, "A's project")
+    project_id = data["id"]
 
     res = requests.patch(
         f"{BASE}/projects/{project_id}",
@@ -122,7 +131,7 @@ def test_update_project_wrong_owner():
     print("Update project wrong owner OK: 403")
 
 
-# DELETE
+# DELETE 
 def test_delete_project():
     headers, _ = get_auth_header()
     project_id = test_create_project()
@@ -134,38 +143,59 @@ def test_delete_project():
     assert res.status_code == 404, res.text
     print("Delete project OK: 204 → 404")
 
+    CREATED_PROJECT_IDS[:] = [
+        (h, pid) for h, pid in CREATED_PROJECT_IDS if pid != project_id
+    ]
+
 
 def test_delete_project_wrong_owner():
     headers_a, _ = get_auth_header("proj_user_a", "123456")
     headers_b, _ = get_auth_header("proj_user_b", "123456")
 
-    res = requests.post(f"{BASE}/projects", json={"name": "A's project"}, headers=headers_a)
-    project_id = res.json()["id"]
+    data = create_project(headers_a, "A's project")
+    project_id = data["id"]
 
     res = requests.delete(f"{BASE}/projects/{project_id}", headers=headers_b)
     assert res.status_code == 403, res.text
     print("Delete project wrong owner OK: 403")
 
+
+# CLEANUP 
+def cleanup_projects():
+    print("\n=== CLEANUP ===")
+    for headers, project_id in CREATED_PROJECT_IDS:
+        res = requests.delete(f"{BASE}/projects/{project_id}", headers=headers)
+        if res.status_code in (204, 404):
+            print(f"Cleaned project {project_id} (and its S3 files)")
+        else:
+            print(f"Failed to clean {project_id}: {res.status_code} - {res.text}")
+
+
+# MAIN 
 if __name__ == "__main__":
-    print("\n=== CREATE ===")
-    test_create_project()
-    test_create_project_unauthorized()
+    try:
+        print("\n=== CREATE ===")
+        test_create_project()
+        test_create_project_unauthorized()
 
-    print("\n=== LIST ===")
-    test_list_projects()
-    test_list_projects_only_own()
+        print("\n=== LIST ===")
+        test_list_projects()
+        test_list_projects_only_own()
 
-    print("\n=== GET ===")
-    test_get_project()
-    test_get_project_not_found()
-    test_get_project_wrong_owner()
+        print("\n=== GET ===")
+        test_get_project()
+        test_get_project_not_found()
+        test_get_project_wrong_owner()
 
-    print("\n=== UPDATE ===")
-    test_update_project()
-    test_update_project_wrong_owner()
+        print("\n=== UPDATE ===")
+        test_update_project()
+        test_update_project_wrong_owner()
 
-    print("\n=== DELETE ===")
-    test_delete_project()
-    test_delete_project_wrong_owner()
+        print("\n=== DELETE ===")
+        test_delete_project()
+        test_delete_project_wrong_owner()
 
-    print("\nAll project tests passed!")
+        print("\nAll project tests passed!")
+
+    finally:
+        cleanup_projects()

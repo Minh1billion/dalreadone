@@ -3,6 +3,8 @@ import requests
 
 BASE = "http://localhost:8000"
 
+CREATED_PROJECTS: list[tuple[dict, int]] = []
+
 
 def get_auth_header(username="file_testuser", password="123456") -> dict:
     session = requests.Session()
@@ -15,7 +17,9 @@ def get_auth_header(username="file_testuser", password="123456") -> dict:
 def create_project(headers: dict, name="Test Project") -> int:
     res = requests.post(f"{BASE}/projects", json={"name": name}, headers=headers)
     assert res.status_code == 201, res.text
-    return res.json()["id"]
+    project_id = res.json()["id"]
+    CREATED_PROJECTS.append((headers, project_id))
+    return project_id
 
 
 def make_file(filename="data.csv", content=b"id,name\n1,foo") -> dict:
@@ -72,7 +76,6 @@ def test_upload_exceeds_limit():
     headers = get_auth_header("file_limit_user", "123456")
     project_id = create_project(headers, name="Limit Project")
 
-    # Upload 5 files (limit)
     for i in range(5):
         res = requests.post(
             f"{BASE}/projects/{project_id}/files",
@@ -194,27 +197,43 @@ def test_delete_project_cascades_files():
 
     requests.delete(f"{BASE}/projects/{project_id}", headers=headers)
 
+    CREATED_PROJECTS[:] = [(h, pid) for h, pid in CREATED_PROJECTS if pid != project_id]
+
     res = requests.get(f"{BASE}/projects/{project_id}/files", headers=headers)
     assert res.status_code == 404, res.text
     print("Delete project cascades files OK: 404 on files endpoint")
 
 
+def cleanup_projects():
+    print("\n=== CLEANUP ===")
+    for headers, project_id in CREATED_PROJECTS:
+        res = requests.delete(f"{BASE}/projects/{project_id}", headers=headers)
+        if res.status_code in (204, 404):
+            print(f"Cleaned project {project_id} (and its S3 files)")
+        else:
+            print(f"Failed to clean {project_id}: {res.status_code} - {res.text}")
+
+
 if __name__ == "__main__":
-    print("\n=== UPLOAD ===")
-    test_upload_file()
-    test_upload_invalid_type()
-    test_upload_wrong_owner()
-    test_upload_exceeds_limit()
-    test_upload_overwrite()
+    try:
+        print("\n=== UPLOAD ===")
+        test_upload_file()
+        test_upload_invalid_type()
+        test_upload_wrong_owner()
+        test_upload_exceeds_limit()
+        test_upload_overwrite()
 
-    print("\n=== LIST ===")
-    test_list_files()
-    test_list_files_wrong_owner()
+        print("\n=== LIST ===")
+        test_list_files()
+        test_list_files_wrong_owner()
 
-    print("\n=== DELETE ===")
-    test_delete_file()
-    test_delete_file_wrong_owner()
-    test_delete_file_not_found()
-    test_delete_project_cascades_files()
+        print("\n=== DELETE ===")
+        test_delete_file()
+        test_delete_file_wrong_owner()
+        test_delete_file_not_found()
+        test_delete_project_cascades_files()
 
-    print("\nAll file tests passed!")
+        print("\nAll file tests passed!")
+
+    finally:
+        cleanup_projects()

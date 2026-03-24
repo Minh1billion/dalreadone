@@ -23,7 +23,7 @@ def test_s3():
     upload_file(file, key)
     print("Upload success:", key)
 
-    s3.delete_file(key)
+    delete_file(key)
     print("Cleanup done")
 
 if __name__ == "__main__":
