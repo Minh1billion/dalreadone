@@ -1,0 +1,13 @@
+pandas
+matplotlib
+seaborn
+
+groq
+boto3
+
+pydantic
+
+fastapi
+uvicorn
+
+dotenv
