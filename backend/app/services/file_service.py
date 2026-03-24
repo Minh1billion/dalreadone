@@ -2,6 +2,7 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from pathlib import Path
+from datetime import datetime
 
 from app.models import File, Project
 from app.storage.s3_client import upload_file, delete_file
@@ -20,6 +21,7 @@ def _get_project(db: Session, project_id: int, user_id: int) -> Project:
     if project.user_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     
+    return project
     
 def _validate_file(file: UploadFile):
     ext = Path(file.filename).suffix
@@ -54,7 +56,7 @@ def upload_project_file(
     
     if is_overwrite:
         record = existing_map[file.filename]
-        
+        record.uploaded_at = datetime.utcnow()
         db.commit()
         db.refresh(record)
         return record
