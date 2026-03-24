@@ -1,4 +1,4 @@
-from fastapi import HTTPException, Response, status
+from fastapi import HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.core.security import (

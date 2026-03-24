@@ -7,7 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from app.core.config import Config
-from app.db.session import SessionLocal
+from app.db.session import get_db
 from app.models import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -64,15 +64,6 @@ def set_refresh_token_cookie(response, token: str):
 
 def clear_refresh_token_cookie(response):
     response.delete_cookie(key="refresh_token", httponly=True, secure=_SECURE_COOKIE, samesite="lax")
-
-
-# DB session
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 # Current user

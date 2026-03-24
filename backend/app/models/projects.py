@@ -14,4 +14,4 @@ class Project(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     created_by = relationship("User", back_populates="projects")
-    files = relationship("File", back_populates="project")
+    files = relationship("File", back_populates="project", cascade="all, delete-orphan")

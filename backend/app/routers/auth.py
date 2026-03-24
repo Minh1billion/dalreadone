@@ -3,10 +3,11 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import Config
+from app.db.session import get_db
 from app.core.oauth import oauth
-from app.core.security import decode_token, clear_refresh_token_cookie, get_db
+from app.core.security import decode_token, clear_refresh_token_cookie
 from app.models.schemas import RegisterRequest, LoginRequest
-from app.services import auth as auth_service
+from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

@@ -17,7 +17,7 @@ def test_register():
     return data["access_token"]
 
 
-#   Login  
+# Login  
 def test_login():
     res = session.post(f"{BASE}/auth/login", json={
         "username": "testuser",
@@ -46,7 +46,7 @@ def test_login_wrong_username():
     print("Login wrong username OK: 401")
 
 
-#   Refresh  
+# Refresh  
 def test_refresh():
     res = session.post(f"{BASE}/auth/refresh")
     assert res.status_code == 200, res.text
@@ -56,7 +56,7 @@ def test_refresh():
     return data["access_token"]
 
 
-#   Logout  
+# Logout  
 def test_logout():
     res = session.post(f"{BASE}/auth/logout")
     assert res.status_code == 200, res.text
@@ -68,14 +68,14 @@ def test_refresh_after_logout():
     print("Refresh after logout OK: 401")
 
 
-#   OAuth  
+# OAuth  
 def test_oauth_links():
     print("\nOAuth URLs:")
     print("Google :", f"{BASE}/auth/google")
     print("Github :", f"{BASE}/auth/github")
 
 
-#   Run  
+# Run  
 if __name__ == "__main__":
     print("\n=== REGISTER ===")
     test_register()
