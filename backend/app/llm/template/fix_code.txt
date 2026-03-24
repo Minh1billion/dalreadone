@@ -14,8 +14,8 @@ Error:
 
 Fix the code. Rules:
 - `df` is already loaded as a pandas DataFrame
-- Store the final result in a variable named `result`
-- `result` must be a pandas DataFrame or a scalar value
+- `result` must be a plain Python dict: result = {{"key": value, ...}}
+- Each value in the dict must be a pandas DataFrame, pandas Series, or a scalar
 - Do not import pandas or read any file
 - Do not use __builtins__
 

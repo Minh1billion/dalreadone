@@ -1,15 +1,33 @@
 import pandas as pd
-from io import StringIO
-
+import numpy as np
 
 MAX_RETRIES = 3
 MAX_RESULT_ROWS = 50
 
 
 def _serialize_result(result) -> str:
-    """Convert execution result to a string for LLM insight generation."""
+    """
+    Convert execution result to a readable string for LLM insight generation.
+    Supports: dict of DataFrames/Series/scalars, DataFrame, Series, or scalar.
+    """
+    if isinstance(result, dict):
+        sections = []
+        for key, val in result.items():
+            if isinstance(val, pd.DataFrame):
+                rendered = val.head(MAX_RESULT_ROWS).to_markdown(index=True)
+            elif isinstance(val, pd.Series):
+                rendered = val.head(MAX_RESULT_ROWS).to_string()
+            else:
+                rendered = str(val)
+            sections.append(f"[{key}]\n{rendered}")
+        return "\n\n".join(sections)
+
     if isinstance(result, pd.DataFrame):
-        return result.head(MAX_RESULT_ROWS).to_markdown(index=False)
+        return result.head(MAX_RESULT_ROWS).to_markdown(index=True)
+
+    if isinstance(result, pd.Series):
+        return result.head(MAX_RESULT_ROWS).to_string()
+
     return str(result)
 
 
@@ -18,7 +36,12 @@ def _exec_code(code: str, df: pd.DataFrame) -> tuple[bool, str, str]:
     Execute pandas code in an isolated local scope.
     Returns: (success, result_str, error_message)
     """
-    local_scope = {"df": df.copy()}
+    local_scope = {
+        "df": df.copy(),
+        "pd": pd,
+        "np": np,
+    }
+
 
     try:
         exec(code, {"__builtins__": {}}, local_scope)
@@ -26,6 +49,9 @@ def _exec_code(code: str, df: pd.DataFrame) -> tuple[bool, str, str]:
         result = local_scope.get("result")
         if result is None:
             return False, "", "Code did not assign anything to `result`"
+
+        if isinstance(result, dict) and len(result) == 0:
+            return False, "", "`result` dict is empty — add at least one key"
 
         return True, _serialize_result(result), ""
 
@@ -36,7 +62,7 @@ def _exec_code(code: str, df: pd.DataFrame) -> tuple[bool, str, str]:
 def run_with_retry(
     code: str,
     df: pd.DataFrame,
-    reprompt_fn,  # callable(code, error) -> new_code
+    reprompt_fn,
 ) -> tuple[str, str]:
     """
     Try executing the code up to MAX_RETRIES times.
@@ -52,7 +78,6 @@ def run_with_retry(
             return result_str, current_code
 
         if attempt < MAX_RETRIES:
-            # Ask LLM to fix the broken code before next attempt
             current_code = reprompt_fn(current_code, error)
         else:
             raise RuntimeError(

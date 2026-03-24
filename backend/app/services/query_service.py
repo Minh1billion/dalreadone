@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
+import traceback
 
 from app.models import File, Project
 from app.storage.s3_client import get_file_bytes
@@ -20,42 +21,55 @@ def run_query(
     project_id: int,
     file_id: int,
     user_id: int,
+    user_question: str = "",
 ) -> dict:
-    # Verify project exists and belongs to user
-    project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    if project.user_id != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    try:
+        # Verify project exists and belongs to user
+        project = db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        if project.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
 
-    # Verify file exists and belongs to project
-    record = db.query(File).filter(
-        File.id == file_id,
-        File.project_id == project_id,
-    ).first()
-    if not record:
-        raise HTTPException(status_code=404, detail="File not found")
+        # Verify file exists and belongs to project
+        record = db.query(File).filter(
+            File.id == file_id,
+            File.project_id == project_id,
+        ).first()
+        if not record:
+            raise HTTPException(status_code=404, detail="File not found")
 
-    # 2.2 Fetch file from S3 and build dataframe context
-    file_bytes = get_file_bytes(record.s3_key)
-    context = build_dataframe_context(file_bytes, record.filename)
+        # Fetch file from S3 and build dataframe context
+        file_bytes = get_file_bytes(record.s3_key)
+        context = build_dataframe_context(file_bytes, record.filename)
 
-    # 2.3 Generate pandas code from LLM
-    explore_reason, code = generate_code(context)
+        # Generate multi-explore pandas code from LLM
+        explore_reason, code = generate_code(context, user_question=user_question)
 
-    # 2.5 + 2.6 + 2.7b Execute code with retry on failure
-    result_str, final_code = run_with_retry(
-        code=code,
-        df=context["df"],
-        reprompt_fn=_make_reprompt_fn(context),
-    )
+        # Execute code with retry on failure
+        result_str, final_code = run_with_retry(
+            code=code,
+            df=context["df"],
+            reprompt_fn=_make_reprompt_fn(context),
+        )
 
-    # 2.9 Generate plain-text insight from result
-    insight = generate_insights(record.filename, explore_reason, result_str)
+        # Generate plain-text insight from multi-section result
+        insight = generate_insights(
+            filename=record.filename,
+            explore_reason=explore_reason,
+            result=result_str,
+            user_question=user_question,
+        )
 
-    return {
-        "explore_reason": explore_reason,
-        "result": result_str,
-        "insight": insight,
-        "code": final_code,
-    }
+        return {
+            "user_question": user_question or None,
+            "explore_reason": explore_reason,
+            "result": result_str,
+            "insight": insight,
+            "code": final_code,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))

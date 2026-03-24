@@ -6,7 +6,7 @@ from app.core.config import Config
 TEMPLATE_DIR = Path(__file__).parent / "template"
 
 _llm = ChatGroq(
-    model="llama3-70b-8192",
+    model=Config.MODEL_ID,
     api_key=Config.GROQ_API_KEY,
     temperature=0.2,
 )
@@ -24,9 +24,9 @@ def _invoke(template_file: str, variables: dict) -> str:
     return response.content.strip()
 
 
-def generate_code(context: dict) -> tuple[str, str]:
+def generate_code(context: dict, user_question: str = "") -> tuple[str, str]:
     """
-    2.3 - LLM decides what to explore and generates pandas code.
+    LLM decides what to explore and generates pandas code returning a dict result.
     Returns: (explore_reason, pandas_code)
     """
     raw = _invoke("generate_code.txt", {
@@ -34,13 +34,14 @@ def generate_code(context: dict) -> tuple[str, str]:
         "schema": context["schema"],
         "sample_rows": context["sample_rows"],
         "stats": context["stats"],
+        "user_question": user_question or "No specific question — explore freely.",
     })
     return _parse_code_response(raw)
 
 
 def reprompt_code(context: dict, broken_code: str, error: str) -> str:
     """
-    2.7b - Ask LLM to fix broken code given the error message.
+    Ask LLM to fix broken code given the error message.
     Returns: fixed pandas code string
     """
     raw = _invoke("fix_code.txt", {
@@ -49,17 +50,22 @@ def reprompt_code(context: dict, broken_code: str, error: str) -> str:
         "broken_code": broken_code,
         "error": error,
     })
-    # fix_code.txt trả về code block, parse lấy code sạch
     _, code = _parse_code_response(f"EXPLORE: fix\n{raw}")
     return code
 
 
-def generate_insights(filename: str, explore_reason: str, result: str) -> str:
-    """2.9 - Generate plain-text insight from result."""
+def generate_insights(
+    filename: str,
+    explore_reason: str,
+    result: str,
+    user_question: str = "",
+) -> str:
+    """Generate plain-text insight from multi-section result."""
     return _invoke("generate_insights.txt", {
         "filename": filename,
         "explore_reason": explore_reason,
         "result": result,
+        "user_question": user_question or "No specific question provided.",
     })
 
 

@@ -1,10 +1,14 @@
 You are a senior data analyst. A user uploaded a dataset named {filename}.
 
-You chose to explore: {explore_reason}
+User question: {user_question}
 
-The analysis returned this result:
+You explored the data from multiple angles: {explore_reason}
+
+The analysis returned results across several sections:
 {result}
 
-Write a concise plain-text insight (3-5 sentences).
-Focus on patterns, anomalies, or actionable findings.
-Do not repeat the raw numbers. Do not use bullet points.
+Write a concise plain-text insight (4-6 sentences).
+- If the user asked a question, answer it directly in the first sentence.
+- Then highlight the most surprising or actionable finding from the results.
+- Mention any notable outliers, trends, or correlations found.
+- Do not repeat raw numbers verbatim. Do not use bullet points.

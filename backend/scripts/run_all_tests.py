@@ -9,6 +9,7 @@ TESTS = [
     ("Auth Flow",       "app/test/test_auth.py"),
     ("Project Flow",    "app/test/test_projects.py"),
     ("File Flow",       "app/test/test_files.py"),
+    ("Query Flow",      "app/test/test_query.py"),
 ]
 
 from app.db.session import engine
@@ -62,6 +63,5 @@ if __name__ == "__main__":
     all_passed = all(ok for _, ok in results) and skipped == 0
     print("====== RESET DATABASE =======")
     reset_db()
-    
+
     sys.exit(0 if all_passed else 1)
-    

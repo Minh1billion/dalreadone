@@ -1,0 +1,51 @@
+order_id,order_date,customer_id,customer_name,region,category,product_name,quantity,unit_price,discount,status
+1001,2024-01-03,C001,Nguyen Van A,North,Electronics,Wireless Mouse,2,350000,0.05,completed
+1002,2024-01-05,C002,Tran Thi B,South,Clothing,Cotton T-Shirt,3,120000,0.00,completed
+1003,2024-01-07,C003,Le Van C,Central,Electronics,USB-C Hub,1,450000,0.10,completed
+1004,2024-01-09,C004,Pham Thi D,North,Books,Data Science Handbook,2,85000,0.00,completed
+1005,2024-01-12,C005,Hoang Van E,South,Electronics,Bluetooth Speaker,1,780000,0.15,completed
+1006,2024-01-14,C001,Nguyen Van A,North,Clothing,Denim Jacket,1,650000,0.10,completed
+1007,2024-01-16,C006,Vo Thi F,East,Books,Python Programming,3,95000,0.05,completed
+1008,2024-01-19,C007,Dang Van G,South,Home,Coffee Maker,1,920000,0.00,completed
+1009,2024-01-22,C002,Tran Thi B,South,Electronics,Wireless Mouse,1,350000,0.00,cancelled
+1010,2024-01-25,C008,Nguyen Thi H,North,Home,Air Purifier,1,2100000,0.20,completed
+1011,2024-02-01,C003,Le Van C,Central,Electronics,Laptop Stand,2,320000,0.05,completed
+1012,2024-02-03,C009,Bui Van I,West,Clothing,Sports Shoes,1,850000,0.10,completed
+1013,2024-02-06,C010,Ly Thi J,North,Books,Machine Learning Guide,1,110000,0.00,completed
+1014,2024-02-08,C004,Pham Thi D,North,Electronics,Mechanical Keyboard,1,1200000,0.15,completed
+1015,2024-02-11,C005,Hoang Van E,South,Home,Robot Vacuum,1,3500000,0.20,completed
+1016,2024-02-13,C006,Vo Thi F,East,Clothing,Linen Shirt,2,210000,0.00,completed
+1017,2024-02-16,C011,Ngo Van K,South,Electronics,Webcam HD,1,560000,0.05,completed
+1018,2024-02-18,C007,Dang Van G,South,Books,Finance Basics,2,75000,0.00,completed
+1019,2024-02-20,C012,Do Thi L,Central,Home,Desk Lamp,3,180000,0.10,completed
+1020,2024-02-23,C008,Nguyen Thi H,North,Electronics,SSD 500GB,1,980000,0.10,cancelled
+1021,2024-03-01,C001,Nguyen Van A,North,Electronics,Noise-Cancel Headphones,1,1800000,0.15,completed
+1022,2024-03-04,C009,Bui Van I,West,Home,Standing Desk,1,4200000,0.20,completed
+1023,2024-03-06,C013,Phan Van M,East,Clothing,Winter Coat,1,1100000,0.10,completed
+1024,2024-03-09,C010,Ly Thi J,North,Books,UX Design Principles,2,90000,0.00,completed
+1025,2024-03-12,C002,Tran Thi B,South,Electronics,USB-C Hub,2,450000,0.05,completed
+1026,2024-03-14,C014,Trinh Thi N,North,Home,Humidifier,1,650000,0.10,completed
+1027,2024-03-17,C011,Ngo Van K,South,Clothing,Running Shorts,3,180000,0.00,completed
+1028,2024-03-19,C003,Le Van C,Central,Electronics,Smart Watch,1,2800000,0.20,completed
+1029,2024-03-22,C015,Cao Van O,West,Books,Startup Playbook,1,120000,0.00,cancelled
+1030,2024-03-25,C012,Do Thi L,Central,Electronics,Portable Charger,2,290000,0.05,completed
+1031,2024-04-02,C004,Pham Thi D,North,Home,Coffee Grinder,1,480000,0.10,completed
+1032,2024-04-05,C013,Phan Van M,East,Electronics,Gaming Mouse,1,750000,0.15,completed
+1033,2024-04-07,C005,Hoang Van E,South,Clothing,Polo Shirt,4,150000,0.00,completed
+1034,2024-04-10,C006,Vo Thi F,East,Books,Deep Learning Book,1,130000,0.05,completed
+1035,2024-04-13,C014,Trinh Thi N,North,Electronics,Monitor 24in,1,3200000,0.20,completed
+1036,2024-04-15,C016,Vuong Van P,South,Home,Electric Kettle,2,320000,0.00,completed
+1037,2024-04-18,C015,Cao Van O,West,Clothing,Yoga Pants,2,280000,0.10,completed
+1038,2024-04-21,C001,Nguyen Van A,North,Electronics,Portable Speaker,1,620000,0.05,completed
+1039,2024-04-23,C007,Dang Van G,South,Books,SQL Cookbook,1,95000,0.00,completed
+1040,2024-04-26,C017,Dinh Thi Q,Central,Electronics,Tablet 10in,1,5500000,0.20,cancelled
+1041,2024-05-02,C008,Nguyen Thi H,North,Home,Smart Light Bulb,4,95000,0.00,completed
+1042,2024-05-05,C016,Vuong Van P,South,Electronics,Wireless Charger,2,380000,0.10,completed
+1043,2024-05-07,C009,Bui Van I,West,Clothing,Formal Trousers,1,420000,0.05,completed
+1044,2024-05-10,C018,Lam Van R,North,Books,Product Management,2,105000,0.00,completed
+1045,2024-05-13,C010,Ly Thi J,North,Electronics,Drawing Tablet,1,1650000,0.15,completed
+1046,2024-05-15,C011,Ngo Van K,South,Home,Blender,1,560000,0.10,completed
+1047,2024-05-18,C017,Dinh Thi Q,Central,Clothing,Linen Trousers,2,350000,0.00,completed
+1048,2024-05-21,C012,Do Thi L,Central,Electronics,Mechanical Keyboard,1,1200000,0.15,completed
+1049,2024-05-24,C013,Phan Van M,East,Books,Cloud Architecture,1,115000,0.05,completed
+1050,2024-05-27,C018,Lam Van R,North,Electronics,Smart Watch,1,2800000,0.20,completed

@@ -10,21 +10,39 @@ Sample data (first 5 rows):
 Basic statistics:
 {stats}
 
-Your job is to independently decide what is most worth exploring in this data.
-Think about: trends, outliers, distributions, correlations, or anomalies.
+User question (may be empty — if so, explore freely):
+{user_question}
 
-Then write a Python pandas code snippet that investigates the most
-interesting aspect you identified.
+Your job: investigate this dataset from MULTIPLE angles simultaneously.
+If a user question is provided, focus your explorations on answering it.
+Always cover at least 3 of these exploration types that are most relevant:
+- summary: key aggregations (totals, averages, counts) relevant to the question
+- trend: time-based or ordered patterns (only if a date/time column exists)
+- outliers: rows or groups that deviate significantly from the norm
+- correlation: relationships between numeric columns
+- distribution: value counts or spread of key categorical/numeric columns
+- top_bottom: top 5 and bottom 5 groups by a relevant metric
 
 Rules:
-- The dataframe is already loaded as variable `df`
-- Store the final result in a variable named `result`
-- `result` must be a pandas DataFrame or a scalar value
+- `df` is already loaded as a pandas DataFrame
+- `result` must be a plain Python dict: result = {{"key": value, ...}}
+- Each key is a short label describing the exploration (e.g. "summary", "top_5_by_revenue")
+- Each value must be a pandas DataFrame, pandas Series, or a scalar
 - Do not import pandas or read any file
-- Respond in this exact format:
+- Do not use __builtins__
+- If the user question is not relevant to the dataset, do not attempt to answer it or make unsupported assumptions.
+  Instead, ignore the question and proceed with general dataset exploration, selecting the most meaningful analyses based on the available data.
 
-EXPLORE: <1 sentence explaining what you chose to explore and why>
+Respond in this exact format:
+
+EXPLORE: <some sentences — what angles you chose and why, referencing the user question if provided>
 CODE:
 ```python
-<your code here>
+# TODO: Exploring logic
+
+result = {{
+    "key1": ...,
+    "key2": ...,
+    "key3": ...,
+}}
 ```
