@@ -18,8 +18,22 @@ def test_create_tables():
 
 def test_crud():
     db = SessionLocal()
+    user = None
+    project = None
+    file = None
 
     try:
+        old_user = db.query(User).filter(User.username == "testuser").first()
+        if old_user:
+            old_files = db.query(File).filter(File.uploaded_by_id == old_user.id).all()
+            old_projects = db.query(Project).filter(Project.user_id == old_user.id).all()
+            for f in old_files:
+                db.delete(f)
+            for p in old_projects:
+                db.delete(p)
+            db.delete(old_user)
+            db.commit()
+
         user = User(username="testuser", email="test@example.com", password="hashed_pw")
         db.add(user)
         db.commit()
@@ -44,9 +58,12 @@ def test_crud():
         print(f"Created file: id={file.id}, filename={file.filename}")
 
     finally:
-        db.delete(file)
-        db.delete(project)
-        db.delete(user)
+        if file:
+            db.delete(file)
+        if project:
+            db.delete(project)
+        if user:
+            db.delete(user)
         db.commit()
         db.close()
         print("Cleanup done")

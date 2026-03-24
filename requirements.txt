@@ -1,15 +1,34 @@
+# Data
 pandas
 matplotlib
 seaborn
 
+# LLM
 groq
+
+# Storage
 boto3
 
+# Database
 sqlalchemy
 psycopg2-binary
-pydantic
 
+# Validation
+pydantic[email]
+
+# Auth
+bcrypt
+python-jose[cryptography]
+authlib
+itsdangerous
+
+# API
 fastapi
-uvicorn
+uvicorn[standard]
+python-multipart
+httpx
+requests
+starlette
 
-dotenv
+# Config
+python-dotenv

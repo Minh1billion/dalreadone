@@ -1,5 +1,4 @@
 import os
-
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -8,24 +7,41 @@ class Config:
     # LLM
     GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
     MODEL_ID = os.environ.get("MODEL_ID")
-    
+
     # S3 Bucket
     AWS_REGION = os.environ.get("AWS_REGION")
     S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
     S3_ACCESS_KEY = os.environ.get("S3_ACCESS_KEY")
     S3_SECRET_KEY = os.environ.get("S3_SECRET_KEY")
-    
+
     # Database
     POSTGRES_USER = os.environ.get("POSTGRES_USER")
     POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
     POSTGRES_DB = os.environ.get("POSTGRES_DB")
     POSTGRES_HOST = os.environ.get("POSTGRES_HOST", "localhost")
-    POSTGRES_PORT = os.environ.get("PORT", "5432")
-    
+    POSTGRES_PORT = os.environ.get("POSTGRES_PORT", "5432")
+
     SQL_CONNECTION_STRING = (
-    f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
-    f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+        f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
+        f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
     )
-    
-if __name__ == "__main__":
-    pass
+
+    # JWT
+    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
+    JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", 15))
+    REFRESH_TOKEN_EXPIRE_DAYS = int(os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS", 7))
+
+    # OAuth - Google
+    GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+    GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
+    GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI")
+
+    # OAuth - Github
+    GITHUB_CLIENT_ID = os.environ.get("GITHUB_CLIENT_ID")
+    GITHUB_CLIENT_SECRET = os.environ.get("GITHUB_CLIENT_SECRET")
+    GITHUB_REDIRECT_URI = os.environ.get("GITHUB_REDIRECT_URI")
+
+    # App
+    ENV = os.environ.get("ENV", "development")
+    FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
