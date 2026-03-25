@@ -178,20 +178,12 @@ def _serialize_result(result: dict) -> str:
 
 
 def _exec_code(code: str, df: pd.DataFrame) -> tuple[bool, str, list[dict], str]:
-    """
-    Validate then execute pandas code in an isolated local scope.
-    Returns: (success, result_str, charts, error_message)
-
-    Validation runs BEFORE exec so forbidden patterns (file reads,
-    imports) are caught with a clear message on the very first attempt,
-    giving the reprompt LLM accurate context to fix the code.
-    """
-    # --- Safety check BEFORE exec ---
     safety_error = _validate_code_safety(code)
     if safety_error:
         return False, "", [], safety_error
 
-    local_scope = {
+    exec_globals = {
+        "__builtins__": _SAFE_BUILTINS,
         "df": df.copy(),
         "pd": pd,
         "np": np,
@@ -199,9 +191,9 @@ def _exec_code(code: str, df: pd.DataFrame) -> tuple[bool, str, list[dict], str]
     }
 
     try:
-        exec(code, {"__builtins__": _SAFE_BUILTINS}, local_scope)
+        exec(code, exec_globals)
 
-        result = local_scope.get("result")
+        result = exec_globals.get("result")
         if result is None:
             return False, "", [], "Code did not assign anything to `result`"
 
@@ -211,18 +203,13 @@ def _exec_code(code: str, df: pd.DataFrame) -> tuple[bool, str, list[dict], str]
         charts = []
         if isinstance(result, dict):
             charts = _extract_charts(result)
-
             if len(result) == 0:
-                return (
-                    False, "", [],
-                    "`result` only had chart keys - add at least one data key"
-                )
+                return False, "", [], "`result` only had chart keys - add at least one data key"
 
         return True, _serialize_result(result), charts, ""
 
     except Exception as e:
         return False, "", [], str(e)
-
 
 def run_with_retry(
     code: str,

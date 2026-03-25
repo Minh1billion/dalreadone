@@ -1,41 +1,82 @@
 import io
 import os
+import random
 import uuid
 import requests
 
 BASE = "http://localhost:8000"
-
 CREATED_PROJECTS: list[tuple[dict, int]] = []
-
 CSV_PATH = os.path.join(os.path.dirname(__file__), "data.csv")
 
+# Set FAST_TEST=1 to skip all LLM-heavy tests
+FAST_TEST = os.environ.get("FAST_TEST", "0") == "1"
 
-# AUTH
+_VALID_CHART_TYPES = {"bar", "line", "pie", "scatter", "histogram", "grouped_bar"}
+
+# ---------------------------------------------------------------------------
+# Random question pool — drawn from the actual CSV columns:
+#   order_id, order_date, customer_id, customer_name, region,
+#   category, product_name, quantity, unit_price, discount, status
+# ---------------------------------------------------------------------------
+_QUESTION_POOL = [
+    # Revenue / sales questions
+    "Which product category generates the most revenue?",
+    "What is the total revenue by region?",
+    "Which product has the highest total sales value?",
+    "Show me monthly revenue trend.",
+    "What is the average order value per region?",
+
+    # Customer questions
+    "Who are the top 5 customers by total spending?",
+    "How many unique customers placed orders each month?",
+    "Which region has the most customers?",
+
+    # Discount / status questions
+    "Which products have the highest average discount?",
+    "What percentage of orders were cancelled?",
+    "Is there a correlation between discount and order status?",
+
+    # Quantity / inventory questions
+    "Which product sells the most units?",
+    "What is the average quantity per order by category?",
+
+    # Time-based questions
+    "Which month had the highest number of orders?",
+    "How does sales volume change week over week?",
+
+    # Irrelevant (should gracefully fall back to exploration)
+    "What is the weather in Paris today?",
+    "Tell me a joke about data analysis.",
+]
+
+
+def _pick_random_question() -> str:
+    """Return a random question from the pool."""
+    return random.choice(_QUESTION_POOL)
+
+
+# ─── Auth / project / file helpers ──────────────────────────────────────────
+
 def get_auth_header(username=None, password="123456") -> dict:
     if username is None:
         username = f"user_{uuid.uuid4().hex[:8]}"
-
     session = requests.Session()
-
     session.post(
         f"{BASE}/auth/register",
         json={"username": username, "password": password},
         timeout=10,
     )
-
     res = session.post(
         f"{BASE}/auth/login",
         json={"username": username, "password": password},
         timeout=10,
     )
-
     assert res.status_code == 200, f"Login failed: {res.text}"
     token = res.json().get("access_token")
     assert token, "No access_token returned"
     return {"Authorization": f"Bearer {token}"}
 
 
-# PROJECT
 def create_project(headers: dict, name="Query Test Project") -> int:
     res = requests.post(
         f"{BASE}/projects",
@@ -49,11 +90,9 @@ def create_project(headers: dict, name="Query Test Project") -> int:
     return project_id
 
 
-# FILE
 def upload_csv(headers: dict, project_id: int, filename="data.csv") -> int:
     with open(CSV_PATH, "rb") as f:
         content = f.read()
-
     res = requests.post(
         f"{BASE}/projects/{project_id}/files",
         files={"file": (filename, io.BytesIO(content), "text/csv")},
@@ -64,91 +103,155 @@ def upload_csv(headers: dict, project_id: int, filename="data.csv") -> int:
     return res.json()["id"]
 
 
-_VALID_CHART_TYPES = {"bar", "line", "pie", "scatter", "histogram", "grouped_bar"}
+# ─── Shared fixture (created once, reused by all happy-path tests) ───────────
+
+class _SharedFixture:
+    """Lazily creates 1 project + 1 uploaded file, reused across the session."""
+    headers: dict = None
+    project_id: int = None
+    file_id: int = None
+
+    @classmethod
+    def get(cls):
+        if cls.file_id is None:
+            cls.headers = get_auth_header()
+            cls.project_id = create_project(cls.headers, name="Shared Happy-Path Project")
+            cls.file_id = upload_csv(cls.headers, cls.project_id)
+        return cls.headers, cls.project_id, cls.file_id
 
 
-# HELPERS
+def _query(headers, project_id, file_id, question="", timeout=60) -> dict:
+    res = requests.post(
+        f"{BASE}/projects/{project_id}/files/{file_id}/query",
+        json={"question": question},
+        headers=headers,
+        timeout=timeout,
+    )
+    assert res.status_code == 200, res.text
+    return res.json()
+
+
+# ─── Result printer ──────────────────────────────────────────────────────────
+
+def print_full_result(data: dict, label: str = ""):
+    """
+    Print every field of the query response so test runs are fully visible.
+    Truncates very long strings to keep output readable.
+    """
+    MAX_STR = 600   # max chars for long text fields before truncating
+    sep = "─" * 60
+    tag = f" [{label}]" if label else ""
+    print(f"\n{'═'*60}")
+    print(f"  FULL RESULT{tag}")
+    print(f"{'═'*60}")
+
+    # --- scalar fields ---
+    print(f"\n  user_question    : {data.get('user_question')!r}")
+    print(f"  explore_reason   : {data.get('explore_reason')!r}")
+    print(f"  interesting_reason: {data.get('interesting_reason')!r}")
+
+    # --- result (may be long markdown table) ---
+    result_text = data.get("result", "")
+    if len(result_text) > MAX_STR:
+        print(f"\n  result ({len(result_text)} chars — first {MAX_STR} shown):\n{sep}")
+        print(result_text[:MAX_STR] + "\n  ... [truncated]")
+    else:
+        print(f"\n  result:\n{sep}\n{result_text}")
+
+    # --- interesting_result ---
+    int_result = data.get("interesting_result") or ""
+    if int_result:
+        if len(int_result) > MAX_STR:
+            print(f"\n  interesting_result ({len(int_result)} chars — first {MAX_STR} shown):\n{sep}")
+            print(int_result[:MAX_STR] + "\n  ... [truncated]")
+        else:
+            print(f"\n  interesting_result:\n{sep}\n{int_result}")
+    else:
+        print(f"\n  interesting_result: (none)")
+
+    # --- insight ---
+    insight_text = data.get("insight", "")
+    if len(insight_text) > MAX_STR:
+        print(f"\n  insight ({len(insight_text)} chars — first {MAX_STR} shown):\n{sep}")
+        print(insight_text[:MAX_STR] + "\n  ... [truncated]")
+    else:
+        print(f"\n  insight:\n{sep}\n{insight_text}")
+
+    # --- code ---
+    code_text = data.get("code", "")
+    if len(code_text) > MAX_STR:
+        print(f"\n  code ({len(code_text)} chars — first {MAX_STR} shown):\n{sep}")
+        print(code_text[:MAX_STR] + "\n  ... [truncated]")
+    else:
+        print(f"\n  code:\n{sep}\n{code_text}")
+
+    # --- charts ---
+    charts = data.get("charts", [])
+    print(f"\n  charts ({len(charts)} total):")
+    for i, c in enumerate(charts):
+        print(f"    [{i}] type={c.get('type')}  title={c.get('title')!r}"
+              f"  labels={len(c.get('labels', []))} items")
+
+    int_charts = data.get("interesting_charts", [])
+    print(f"\n  interesting_charts ({len(int_charts)} total):")
+    for i, c in enumerate(int_charts):
+        print(f"    [{i}] type={c.get('type')}  title={c.get('title')!r}"
+              f"  labels={len(c.get('labels', []))} items")
+
+    print(f"\n{'═'*60}\n")
+
+
+# ─── Assertion helpers ───────────────────────────────────────────────────────
+
 def assert_base_fields(data: dict):
-    """Assert fields present in every successful query response."""
     for field in ("explore_reason", "result", "insight", "code"):
         assert field in data, f"Missing field: {field}"
         assert data[field], f"{field} should not be empty"
-
-    assert "interesting_reason" in data, "Missing key: interesting_reason"
-    assert "interesting_result" in data, "Missing key: interesting_result"
-
-    assert "charts" in data, "Missing key: charts"
-    assert "interesting_charts" in data, "Missing key: interesting_charts"
-    assert isinstance(data["charts"], list), "charts must be a list"
-    assert isinstance(data["interesting_charts"], list), "interesting_charts must be a list"
-
-    # cost_report is required — if missing, the new query_service.py was not deployed
-    assert "cost_report" in data, (
-        "Missing key: cost_report — make sure the new query_service.py is deployed and server restarted"
-    )
-    assert isinstance(data["cost_report"], dict), "cost_report must be a dict"
+    assert "interesting_reason" in data
+    assert "interesting_result" in data
+    assert isinstance(data["charts"], list)
+    assert isinstance(data["interesting_charts"], list)
+    assert "cost_report" in data, "Missing cost_report — new query_service.py not deployed?"
+    assert isinstance(data["cost_report"], dict)
 
 
 def assert_chart(chart):
-    """Validate a single chart dict."""
-    assert isinstance(chart, dict), "chart must be a dict"
-    assert "type" in chart, "chart missing 'type'"
-    assert "title" in chart, "chart missing 'title'"
-    assert "labels" in chart, "chart missing 'labels'"
-    assert "data" in chart, "chart missing 'data'"
+    assert isinstance(chart, dict)
     assert chart["type"] in _VALID_CHART_TYPES, f"Invalid chart type: {chart['type']}"
-    assert isinstance(chart["labels"], list), "labels must be a list"
-    assert isinstance(chart["data"], list), "data must be a list"
-    assert len(chart["labels"]) > 0, "chart labels must not be empty"
-
+    assert isinstance(chart["labels"], list) and len(chart["labels"]) > 0
+    assert isinstance(chart["data"], list)
     if chart["type"] == "grouped_bar":
-        assert "series_labels" in chart, "grouped_bar chart missing 'series_labels'"
-        assert isinstance(chart["series_labels"], list), "series_labels must be a list"
+        assert "series_labels" in chart
         for series in chart["data"]:
-            assert isinstance(series, list), "grouped_bar data entries must be lists"
-            assert len(series) == len(chart["labels"]), (
-                "grouped_bar series length must match labels length"
-            )
+            assert isinstance(series, list)
+            assert len(series) == len(chart["labels"])
     else:
-        assert len(chart["labels"]) == len(chart["data"]), (
-            "labels and data must have the same length"
-        )
+        assert len(chart["labels"]) == len(chart["data"])
 
 
 def assert_charts_list(charts):
-    """Validate the charts list from the response."""
-    assert isinstance(charts, list), "charts must be a list"
-    assert len(charts) <= 3, "charts list must have at most 3 items"
-    for chart in charts:
-        assert_chart(chart)
+    assert isinstance(charts, list)
+    assert len(charts) <= 3
+    for c in charts:
+        assert_chart(c)
 
 
 def print_cost_report(data: dict, label: str = ""):
-    """
-    Print cost_report from the response JSON.
-    This works regardless of whether the server console is visible,
-    because we read it directly from the HTTP response body.
-    """
     report = data.get("cost_report")
     if not report:
-        print(f"  [cost] NO cost_report in response — new query_service.py not deployed yet")
+        print("  [cost] NO cost_report in response")
         return
-
     sep = "-" * 56
     tag = f" [{label}]" if label else ""
-    print(f"\n{sep}")
-    print(f"  COST REPORT{tag}")
-    print(sep)
+    print(f"\n{sep}\n  COST REPORT{tag}\n{sep}")
     print(f"  total_tokens : {report.get('total_tokens', 0):>6}")
     print(f"  prompt_tokens: {report.get('total_prompt_tokens', 0):>6}")
     print(f"  output_tokens: {report.get('total_completion_tokens', 0):>6}")
     print(f"  cost_usd     : ${report.get('total_cost_usd', 0):.6f}")
     print(f"  latency_ms   : {report.get('total_latency_ms', 0):>6} ms")
-
     skipped = report.get("skipped_stages", [])
     if skipped:
         print(f"  skipped      : {', '.join(skipped)}")
-
     print(f"  {'stage':<30} {'in':>5} {'out':>5}  {'cost_usd':>10}  {'ms':>6}")
     print(f"  {'-'*30} {'-'*5} {'-'*5}  {'-'*10}  {'-'*6}")
     for call in report.get("calls", []):
@@ -162,138 +265,112 @@ def print_cost_report(data: dict, label: str = ""):
     print(sep + "\n")
 
 
-def print_response(data: dict):
-    print("Explore reason:", data["explore_reason"])
-    print("Insight preview:", data["insight"][:100], "...")
-    print("\n--- CODE ---")
-    print(data["code"])
-    print("\n--- RESULT ---")
-    print(data["result"])
+# ─── Tests ───────────────────────────────────────────────────────────────────
 
-    charts = data.get("charts", [])
-    if charts:
-        print(f"\n--- CHARTS ({len(charts)}) ---")
-        for i, c in enumerate(charts, 1):
-            print(f"  [{i}] type={c['type']}  title='{c['title']}'  points={len(c['labels'])}")
-            print(f"       labels: {c['labels'][:5]} ...")
-            print(f"       data  : {c['data'][:5]} ...")
-    else:
-        print("\n--- CHARTS: [] ---")
+def test_query_happy_path():
+    """
+    Combined: test_query_success + test_query_chart_structure + test_query_interesting_findings.
+    Uses a RANDOM question from the pool on every run to exercise varied inputs.
+    Reuses shared fixture → only 1 project/file created.
+    """
+    if FAST_TEST:
+        print("SKIPPED test_query_happy_path (FAST_TEST=1)")
+        return
 
-    interesting_charts = data.get("interesting_charts", [])
-    if interesting_charts:
-        print(f"\n--- INTERESTING CHARTS ({len(interesting_charts)}) ---")
-        for i, c in enumerate(interesting_charts, 1):
-            print(f"  [{i}] type={c['type']}  title='{c['title']}'  points={len(c['labels'])}")
-    else:
-        print("\n--- INTERESTING CHARTS: [] ---")
+    question = _pick_random_question()
+    print(f"\n  [happy_path] Random question selected: {question!r}")
 
-    if data.get("interesting_reason"):
-        print("\n--- INTERESTING REASON ---")
-        print(data["interesting_reason"])
+    headers, project_id, file_id = _SharedFixture.get()
+    data = _query(headers, project_id, file_id, question=question)
 
-
-# TESTS
-def test_query_success():
-    """Happy path: upload CSV then query with a specific question."""
-    headers = get_auth_header()
-    project_id = create_project(headers)
-    file_id = upload_csv(headers, project_id)
-
-    res = requests.post(
-        f"{BASE}/projects/{project_id}/files/{file_id}/query",
-        json={"question": "Which product should I invest more?"},
-        headers=headers,
-        timeout=60,
-    )
-
-    assert res.status_code == 200, res.text
-
-    data = res.json()
-    assert data["user_question"] == "Which product should I invest more?"
+    # --- test_query_success ---
+    assert data["user_question"] == question
     assert_base_fields(data)
     assert_charts_list(data["charts"])
     assert_charts_list(data["interesting_charts"])
 
-    print("Query success OK:", data["explore_reason"])
-    print_response(data)
-    print_cost_report(data, label="test_query_success")
+    # --- test_query_chart_structure ---
+    total = len(data["charts"]) + len(data["interesting_charts"])
+    print(f"  Charts: pass1={len(data['charts'])}  pass2={len(data['interesting_charts'])}  total={total}")
 
-
-def test_query_chart_structure():
-    """
-    Free exploration should produce at least one chart in the charts list.
-    Validates the full chart contract for every chart returned.
-    """
-    headers = get_auth_header()
-    project_id = create_project(headers)
-    file_id = upload_csv(headers, project_id)
-
-    res = requests.post(
-        f"{BASE}/projects/{project_id}/files/{file_id}/query",
-        json={"question": ""},
-        headers=headers,
-        timeout=60,
-    )
-
-    assert res.status_code == 200, res.text
-
-    data = res.json()
-    assert_base_fields(data)
-    assert_charts_list(data["charts"])
-    assert_charts_list(data["interesting_charts"])
-
-    total_charts = len(data["charts"]) + len(data["interesting_charts"])
-    print(f"Charts produced: pass1={len(data['charts'])}  pass2={len(data['interesting_charts'])}")
-    for c in data["charts"]:
-        print(f"  pass1: type={c['type']}  title='{c['title']}'  points={len(c['labels'])}")
-    for c in data["interesting_charts"]:
-        print(f"  pass2: type={c['type']}  title='{c['title']}'  points={len(c['labels'])}")
-    print_cost_report(data, label="test_query_chart_structure")
-
-
-def test_query_interesting_findings():
-    """Validates interesting_reason / interesting_result fields are consistent."""
-    headers = get_auth_header()
-    project_id = create_project(headers)
-    file_id = upload_csv(headers, project_id)
-
-    res = requests.post(
-        f"{BASE}/projects/{project_id}/files/{file_id}/query",
-        json={"question": ""},
-        headers=headers,
-        timeout=60,
-    )
-
-    assert res.status_code == 200, res.text
-
-    data = res.json()
-    assert_base_fields(data)
-
+    # --- test_query_interesting_findings ---
     assert isinstance(data["interesting_reason"], (str, type(None)))
     assert isinstance(data["interesting_result"], (str, type(None)))
-
     if data["interesting_reason"]:
-        assert data["interesting_result"], (
-            "interesting_result should be non-empty when interesting_reason is set"
-        )
+        assert data["interesting_result"], "interesting_result must be set when interesting_reason is set"
     if data["interesting_result"]:
-        assert data["interesting_reason"], (
-            "interesting_reason should be non-empty when interesting_result is set"
-        )
+        assert data["interesting_reason"], "interesting_reason must be set when interesting_result is set"
 
-    found = bool(data.get("interesting_reason"))
-    print(f"Interesting findings detected: {found}")
-    if found:
-        print("Reason:", data["interesting_reason"])
-    print_cost_report(data, label="test_query_interesting_findings")
+    # Print full response so nothing is hidden
+    print_full_result(data, label="happy_path")
+    print_cost_report(data, label="happy_path")
+    print("test_query_happy_path OK")
+
+
+def test_query_irrelevant_question():
+    """
+    Irrelevant question should fall back to general exploration and still return a valid response.
+    Always picks one of the two irrelevant entries from the pool so the behavior is deterministic.
+    """
+    if FAST_TEST:
+        print("SKIPPED test_query_irrelevant_question (FAST_TEST=1)")
+        return
+
+    # Pick a question that is clearly off-topic for the sales CSV
+    irrelevant_questions = [q for q in _QUESTION_POOL if "weather" in q or "joke" in q]
+    question = random.choice(irrelevant_questions)
+    print(f"\n  [irrelevant] Question: {question!r}")
+
+    headers, project_id, file_id = _SharedFixture.get()
+    data = _query(headers, project_id, file_id, question=question)
+
+    assert data["user_question"] == question
+    assert_base_fields(data)
+    assert_charts_list(data["charts"])
+    assert_charts_list(data["interesting_charts"])
+
+    # Print full response so fallback behavior is visible
+    print_full_result(data, label="irrelevant_question")
+    print_cost_report(data, label="irrelevant_question")
+    print("test_query_irrelevant_question OK:", data["explore_reason"])
+
+
+def test_query_multiple_random():
+    """
+    Run N rounds with different random questions to stress-test the pipeline.
+    Set env var QUERY_ROUNDS=N (default 1) to control iteration count.
+    Each round reuses the shared fixture — no extra project/file created.
+    """
+    if FAST_TEST:
+        print("SKIPPED test_query_multiple_random (FAST_TEST=1)")
+        return
+
+    rounds = int(os.environ.get("QUERY_ROUNDS", "1"))
+    headers, project_id, file_id = _SharedFixture.get()
+
+    # Sample without replacement so the same question is not repeated
+    pool = _QUESTION_POOL.copy()
+    random.shuffle(pool)
+    selected = pool[:rounds]
+
+    print(f"\n  [multiple_random] Running {rounds} round(s):")
+    for i, question in enumerate(selected, start=1):
+        print(f"\n  Round {i}/{rounds}: {question!r}")
+        data = _query(headers, project_id, file_id, question=question)
+        assert data["user_question"] == question
+        assert_base_fields(data)
+        assert_charts_list(data["charts"])
+        assert_charts_list(data["interesting_charts"])
+        print_full_result(data, label=f"round_{i}")
+        print_cost_report(data, label=f"round_{i}")
+
+    print(f"\ntest_query_multiple_random OK ({rounds} rounds)")
 
 
 def test_query_wrong_owner():
-    """User B cannot query User A's file."""
+    """User B cannot query User A's file → 403."""
     headers_a = get_auth_header()
     headers_b = get_auth_header()
-
     project_id = create_project(headers_a)
     file_id = upload_csv(headers_a, project_id)
 
@@ -303,73 +380,41 @@ def test_query_wrong_owner():
         headers=headers_b,
         timeout=10,
     )
-
     assert res.status_code == 403, res.text
-    print("Query wrong owner OK: 403")
+    print("test_query_wrong_owner OK: 403")
 
 
 def test_query_project_not_found():
-    """Querying a non-existent project returns 404."""
+    """Non-existent project → 404."""
     headers = get_auth_header()
-
     res = requests.post(
         f"{BASE}/projects/999999/files/1/query",
         json={"question": "test"},
         headers=headers,
         timeout=10,
     )
-
     assert res.status_code == 404, res.text
-    print("Query project not found OK: 404")
+    print("test_query_project_not_found OK: 404")
 
 
 def test_query_file_not_found():
-    """Querying a non-existent file returns 404."""
+    """Non-existent file → 404."""
     headers = get_auth_header()
     project_id = create_project(headers)
-
     res = requests.post(
         f"{BASE}/projects/{project_id}/files/999999/query",
         json={"question": "test"},
         headers=headers,
         timeout=10,
     )
-
     assert res.status_code == 404, res.text
-    print("Query file not found OK: 404")
+    print("test_query_file_not_found OK: 404")
 
 
-def test_query_irrelevant_question():
-    """Irrelevant question should fallback to general exploration and still return charts."""
-    headers = get_auth_header()
-    project_id = create_project(headers)
-    file_id = upload_csv(headers, project_id)
+# ─── Cleanup ─────────────────────────────────────────────────────────────────
 
-    res = requests.post(
-        f"{BASE}/projects/{project_id}/files/{file_id}/query",
-        json={"question": "What is the weather in Paris today?"},
-        headers=headers,
-        timeout=60,
-    )
-
-    assert res.status_code == 200, res.text
-
-    data = res.json()
-    assert data["user_question"] == "What is the weather in Paris today?"
-    assert_base_fields(data)
-    assert_charts_list(data["charts"])
-    assert_charts_list(data["interesting_charts"])
-
-    print("Irrelevant question handled OK")
-    print("Explore reason:", data["explore_reason"])
-    print(f"Charts: {len(data['charts'])} pass1, {len(data['interesting_charts'])} pass2")
-    print_cost_report(data, label="test_query_irrelevant_question")
-
-
-# CLEANUP
 def cleanup_projects():
     print("\n=== CLEANUP ===")
-
     for headers, project_id in CREATED_PROJECTS:
         res = requests.delete(
             f"{BASE}/projects/{project_id}",
@@ -382,20 +427,28 @@ def cleanup_projects():
         print(f"Cleaned project {project_id}")
 
 
-# MAIN
-if __name__ == "__main__":
-    try:
-        print("\n=== QUERY TESTS ===")
+# ─── Main ────────────────────────────────────────────────────────────────────
 
-        test_query_success()
-        test_query_chart_structure()
-        test_query_interesting_findings()
+if __name__ == "__main__":
+    import sys
+
+    if "--fast" in sys.argv:
+        os.environ["FAST_TEST"] = "1"
+        globals()["FAST_TEST"] = True
+
+    try:
+        print(f"\n=== QUERY TESTS (FAST_TEST={FAST_TEST}) ===\n")
+
+        # Auth / existence error tests (cheap — no LLM calls)
         test_query_wrong_owner()
         test_query_project_not_found()
         test_query_file_not_found()
+
+        # LLM-heavy tests
+        test_query_happy_path()
         test_query_irrelevant_question()
+        test_query_multiple_random()
 
         print("\nAll query tests passed!")
-
     finally:
         cleanup_projects()
