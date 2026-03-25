@@ -13,22 +13,6 @@ from app.llm.llm_engine import (
 )
 from app.sandbox.code_executor import run_with_retry
 
-# Max characters of a result string fed back into a subsequent LLM prompt.
-# ~4 chars per token → 3,200 chars ≈ 800 tokens.
-# The full result is still returned to the caller unchanged.
-_MAX_RESULT_CHARS_FOR_LLM = 3200
-
-# Max characters of the interesting_result fed into generate_insights.
-# Pass-2 results are usually shorter, but cap them anyway.
-_MAX_INTERESTING_CHARS_FOR_LLM = 1600
-
-
-def _trim(text: str, limit: int) -> str:
-    """Hard-truncate text to limit chars, appending a marker when cut."""
-    if len(text) <= limit:
-        return text
-    return text[:limit] + "\n... [truncated for brevity]"
-
 
 def _make_reprompt_fn(context: dict):
     def reprompt_fn(broken_code: str, error: str) -> str:
@@ -49,17 +33,12 @@ def run_query(
     Pass 1: multi-angle exploration, returns result + up to 3 charts.
     Pass 2: look for interesting/anomalous findings, also returns charts.
 
-    Token-saving measures applied here:
-      - result_str is truncated before being fed into pass-2 and insights prompts.
-        The full string is still returned to the API caller.
-      - interesting_result_str is also truncated before insights.
-
     Response shape:
       {
         user_question: str | None,
         explore_reason: str,
         result: str,
-        charts: list[dict],
+        charts: list[dict],          # replaces old chart_data (single dict)
         interesting_reason: str | None,
         interesting_result: str | None,
         interesting_charts: list[dict],
@@ -93,9 +72,6 @@ def run_query(
             reprompt_fn=_make_reprompt_fn(context),
         )
 
-        # Trimmed version used only as LLM input - full result_str returned to caller
-        result_str_trimmed = _trim(result_str, _MAX_RESULT_CHARS_FOR_LLM)
-
         # Pass 2: look for interesting/anomalous findings
         interesting_reason = ""
         interesting_result_str = ""
@@ -105,7 +81,7 @@ def run_query(
             int_reason, int_code = generate_interesting_code(
                 context=context,
                 explore_reason=explore_reason,
-                result_str=result_str_trimmed,   # trimmed - saves ~800 tokens/call
+                result_str=result_str,
                 user_question=user_question,
             )
 
@@ -125,23 +101,20 @@ def run_query(
         insight = generate_insights(
             filename=record.filename,
             explore_reason=explore_reason,
-            result=result_str_trimmed,           # trimmed - saves ~800 tokens/call
+            result=result_str,
             user_question=user_question,
             interesting_reason=interesting_reason,
-            interesting_result=_trim(           # trimmed - saves up to ~400 tokens
-                interesting_result_str,
-                _MAX_INTERESTING_CHARS_FOR_LLM,
-            ),
+            interesting_result=interesting_result_str,
         )
 
         return {
             "user_question": user_question or None,
             "explore_reason": explore_reason,
-            "result": result_str,               # full, untruncated
-            "charts": charts,
+            "result": result_str,
+            "charts": charts,                              # list of chart dicts
             "interesting_reason": interesting_reason or None,
-            "interesting_result": interesting_result_str or None,  # full
-            "interesting_charts": interesting_charts,
+            "interesting_result": interesting_result_str or None,
+            "interesting_charts": interesting_charts,      # list of chart dicts
             "insight": insight,
             "code": final_code,
         }
