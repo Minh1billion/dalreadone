@@ -15,7 +15,6 @@ from app.sandbox.code_executor import run_with_retry
 
 
 def _make_reprompt_fn(context: dict):
-    """Closure passed to run_with_retry. Signature: (broken_code, error) -> fixed_code"""
     def reprompt_fn(broken_code: str, error: str) -> str:
         return reprompt_code(context, broken_code, error)
     return reprompt_fn
@@ -28,15 +27,32 @@ def run_query(
     user_id: int,
     user_question: str = "",
 ) -> dict:
+    """
+    Main query pipeline.
+
+    Pass 1: multi-angle exploration, returns result + up to 3 charts.
+    Pass 2: look for interesting/anomalous findings, also returns charts.
+
+    Response shape:
+      {
+        user_question: str | None,
+        explore_reason: str,
+        result: str,
+        charts: list[dict],          # replaces old chart_data (single dict)
+        interesting_reason: str | None,
+        interesting_result: str | None,
+        interesting_charts: list[dict],
+        insight: str,
+        code: str,
+      }
+    """
     try:
-        # Verify project exists and belongs to user
         project = db.query(Project).filter(Project.id == project_id).first()
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         if project.user_id != user_id:
             raise HTTPException(status_code=403, detail="Not authorized")
 
-        # Verify file exists and belongs to project
         record = db.query(File).filter(
             File.id == file_id,
             File.project_id == project_id,
@@ -44,14 +60,13 @@ def run_query(
         if not record:
             raise HTTPException(status_code=404, detail="File not found")
 
-        # Fetch file from S3 and build dataframe context
         file_bytes = get_file_bytes(record.s3_key)
         context = build_dataframe_context(file_bytes, record.filename)
 
         # Pass 1: standard multi-angle exploration
         explore_reason, code = generate_code(context, user_question=user_question)
 
-        result_str, final_code = run_with_retry(
+        result_str, charts, final_code = run_with_retry(
             code=code,
             df=context["df"],
             reprompt_fn=_make_reprompt_fn(context),
@@ -60,6 +75,7 @@ def run_query(
         # Pass 2: look for interesting/anomalous findings
         interesting_reason = ""
         interesting_result_str = ""
+        interesting_charts: list[dict] = []
 
         try:
             int_reason, int_code = generate_interesting_code(
@@ -69,17 +85,16 @@ def run_query(
                 user_question=user_question,
             )
 
-            # Skip execution if LLM found nothing interesting (empty result dict)
             is_empty = int_code.strip() in ("result = {}", "result={}")
             if not is_empty:
-                interesting_result_str, _ = run_with_retry(
+                interesting_result_str, interesting_charts, _ = run_with_retry(
                     code=int_code,
                     df=context["df"],
                     reprompt_fn=_make_reprompt_fn(context),
                 )
                 interesting_reason = int_reason
+
         except Exception:
-            # Second pass is best-effort — never fail the whole request
             traceback.print_exc()
 
         # Generate final insights combining both passes
@@ -96,11 +111,14 @@ def run_query(
             "user_question": user_question or None,
             "explore_reason": explore_reason,
             "result": result_str,
+            "charts": charts,                              # list of chart dicts
             "interesting_reason": interesting_reason or None,
             "interesting_result": interesting_result_str or None,
+            "interesting_charts": interesting_charts,      # list of chart dicts
             "insight": insight,
             "code": final_code,
         }
+
     except HTTPException:
         raise
     except Exception as e:

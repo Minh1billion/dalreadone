@@ -14,10 +14,14 @@ Error:
 
 Fix the code. Rules:
 - `df` is already loaded as a pandas DataFrame
+- `pd` (pandas) and `np` (numpy) are already available - do NOT import them
+- `datetime` module is already available - do NOT import it
+- Do NOT use any import statements - no `import`, no `from ... import`, no `__import__`
+- Do NOT use `__builtins__` or any dunder attributes
 - `result` must be a plain Python dict: result = {{"key": value, ...}}
 - Each value in the dict must be a pandas DataFrame, pandas Series, or a scalar
-- Do not import pandas or read any file
-- Do not use __builtins__
+- If the original code used `_chart` (single dict), convert it to `_charts` (list of dicts)
+- All chart labels and data must be plain Python lists - use .tolist() on any numpy/pandas objects
 
 Respond ONLY with the fixed code block, no explanation:
 ```python

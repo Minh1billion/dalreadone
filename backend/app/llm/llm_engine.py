@@ -1,3 +1,5 @@
+import time
+import re
 from pathlib import Path
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
@@ -11,6 +13,85 @@ _llm = ChatGroq(
     temperature=0.2,
 )
 
+# How many times to retry on rate-limit (429) before giving up
+_RATE_LIMIT_MAX_RETRIES = 4
+
+# Seconds to wait between retries — doubles each attempt (1, 2, 4, 8...)
+_RATE_LIMIT_BASE_DELAY = 1.0
+
+# Hard cap on a single sleep inside the server request handler.
+_MAX_WAIT_SECONDS = 30.0
+
+# Regex to extract "retry after NmSs" from the Groq error message
+_RETRY_AFTER_RE = re.compile(r"try again in (\d+)m([\d.]+)s", re.IGNORECASE)
+
+
+def _parse_retry_after(message: str) -> float | None:
+    """
+    Parse the wait time from a Groq 429 error message.
+    Returns seconds as float, or None if not found.
+
+    Example message fragment:
+      'Please try again in 2m57.12s.'
+    """
+    m = _RETRY_AFTER_RE.search(message)
+    if m:
+        minutes = int(m.group(1))
+        seconds = float(m.group(2))
+        return minutes * 60 + seconds
+    return None
+
+
+def _invoke_with_retry(chain, variables: dict) -> str:
+    """
+    Invoke a LangChain chain, retrying up to _RATE_LIMIT_MAX_RETRIES times
+    if Groq returns a 429 rate-limit error.
+
+    Wait strategy (in order of priority):
+      1. Parse the 'retry after' seconds from the error message.
+         If that value exceeds _MAX_WAIT_SECONDS, raise immediately —
+         sleeping too long inside a server handler causes client timeout.
+      2. Otherwise fall back to exponential backoff capped at _MAX_WAIT_SECONDS.
+    """
+    delay = _RATE_LIMIT_BASE_DELAY
+
+    for attempt in range(1, _RATE_LIMIT_MAX_RETRIES + 1):
+        try:
+            response = chain.invoke(variables)
+            return response.content.strip()
+
+        except Exception as e:
+            error_str = str(e)
+
+            # Only retry on rate-limit errors
+            is_rate_limit = (
+                "429" in error_str
+                or "rate_limit_exceeded" in error_str
+                or "Rate limit" in error_str
+            )
+
+            if not is_rate_limit or attempt == _RATE_LIMIT_MAX_RETRIES:
+                raise
+
+            suggested = _parse_retry_after(error_str)
+
+            # If Groq says to wait longer than our cap, give up now so the
+            # HTTP response reaches the client before it times out.
+            if suggested is not None and suggested > _MAX_WAIT_SECONDS:
+                print(
+                    f"[llm_engine] Rate limit wait too long ({suggested:.0f}s > "
+                    f"{_MAX_WAIT_SECONDS:.0f}s cap) — raising immediately."
+                )
+                raise
+
+            wait = min(suggested or delay, _MAX_WAIT_SECONDS)
+            print(
+                f"[llm_engine] Rate limit hit (attempt {attempt}/{_RATE_LIMIT_MAX_RETRIES}). "
+                f"Waiting {wait:.1f}s before retry..."
+            )
+            time.sleep(wait)
+            delay *= 2  # exponential backoff for subsequent fallback waits
+
 
 def _load_template(filename: str) -> PromptTemplate:
     text = (TEMPLATE_DIR / filename).read_text()
@@ -20,8 +101,7 @@ def _load_template(filename: str) -> PromptTemplate:
 def _invoke(template_file: str, variables: dict) -> str:
     prompt = _load_template(template_file)
     chain = prompt | _llm
-    response = chain.invoke(variables)
-    return response.content.strip()
+    return _invoke_with_retry(chain, variables)
 
 
 def generate_code(context: dict, user_question: str = "") -> tuple[str, str]:

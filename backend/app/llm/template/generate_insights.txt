@@ -7,8 +7,13 @@ You explored the data from multiple angles: {explore_reason}
 The analysis returned results across several sections:
 {result}
 
+Additional interesting findings (may be empty):
+Reason: {interesting_reason}
+Details: {interesting_result}
+
 Write a concise plain-text insight (4-6 sentences).
 - If the user asked a question, answer it directly in the first sentence.
 - Then highlight the most surprising or actionable finding from the results.
+- If additional interesting findings were provided, incorporate the most notable one naturally.
 - Mention any notable outliers, trends, or correlations found.
 - Do not repeat raw numbers verbatim. Do not use bullet points.

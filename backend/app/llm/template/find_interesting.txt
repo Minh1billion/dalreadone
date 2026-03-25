@@ -1,4 +1,5 @@
-You are a senior data analyst. You have already run a first-pass exploration on a dataset and received results. Now your job is to look at those results and decide if there are any **interesting, unexpected, or domain-specific findings** worth digging into deeper.
+You are a senior data analyst. You have already run a first-pass exploration on a dataset and received results.
+Now your job is to look at those results and decide if there are any interesting, unexpected, or domain-specific findings worth digging into deeper.
 
 Dataset: {filename}
 Schema:
@@ -12,7 +13,7 @@ User question (may be empty): {user_question}
 
 ---
 
-Your task: Look at the first-pass results and identify up to 3 **genuinely interesting** findings that deserve a follow-up calculation. These could be:
+Your task: Look at the first-pass results and identify up to 3 genuinely interesting findings that deserve a follow-up calculation. These could be:
 - An anomaly or outlier that stands out
 - A suspiciously large gap between groups
 - A time-based spike or drop that looks significant
@@ -22,11 +23,28 @@ Your task: Look at the first-pass results and identify up to 3 **genuinely inter
 Rules:
 - Only add follow-up explorations if there is something truly worth investigating. If the data looks ordinary, return an empty result dict.
 - `df` is already loaded as a pandas DataFrame
+- `pd` (pandas) and `np` (numpy) are already available - do NOT import them
+- `datetime` module is already available if needed for date operations - do NOT import it
+- Do NOT use any import statements - no `import`, no `from ... import`, no `__import__`
+- Do NOT use `__builtins__` or any dunder attributes
 - `result` must be a plain Python dict: result = {{"key": value, ...}}
 - Each key should describe the finding clearly (e.g. "revenue_spike_feb11", "top_product_concentration")
 - Each value must be a pandas DataFrame, pandas Series, or a scalar
-- Do not import pandas or read any file
-- Do not use __builtins__
+
+Chart instructions:
+- Include a `_charts` key containing a LIST of chart dicts (up to 2 charts max) if the findings are best shown visually.
+- Focus charts on the anomaly or interesting pattern found - not a repeat of pass 1 charts.
+- Use the same chart types and rules as in the first pass.
+- If nothing interesting was found, omit `_charts` entirely (the result dict will be empty anyway).
+
+Available chart types: "bar", "line", "pie", "scatter", "histogram", "grouped_bar"
+Same rules as pass 1 - see type selection guide:
+  "bar"         - compare values across categories
+  "line"        - values over time (time-ordered labels only)
+  "pie"         - 2–5 categories, part-of-whole
+  "scatter"     - correlation between two numeric columns; data = [[x,y], ...]
+  "histogram"   - distribution of a numeric column; labels = bin ranges, data = counts
+  "grouped_bar" - multiple metrics per category; requires series_labels
 
 Respond in this exact format:
 
@@ -37,6 +55,14 @@ CODE:
 
 result = {{
     "key1": ...,
+    "_charts": [
+        {{
+            "type": "bar",
+            "title": "...",
+            "labels": [...],
+            "data": [...],
+        }},
+    ],
 }}
 ```
 

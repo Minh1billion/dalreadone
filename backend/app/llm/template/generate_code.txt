@@ -10,7 +10,7 @@ Sample data (first 5 rows):
 Basic statistics:
 {stats}
 
-User question (may be empty — if so, explore freely):
+User question (may be empty - if so, explore freely):
 {user_question}
 
 Your job: investigate this dataset from MULTIPLE angles simultaneously.
@@ -22,27 +22,75 @@ Always cover at least 3 of these exploration types that are most relevant:
 - correlation: relationships between numeric columns
 - distribution: value counts or spread of key categorical/numeric columns
 - top_bottom: top 5 and bottom 5 groups by a relevant metric
+- specific: some key stats that can be extracted from the specific domain of data
 
 Rules:
 - `df` is already loaded as a pandas DataFrame
+- `pd` (pandas) and `np` (numpy) are already available - do NOT import them
+- `datetime` module is already available if needed for date operations - do NOT import it
+- Do NOT use any import statements - no `import`, no `from ... import`, no `__import__`
+- Do NOT use `__builtins__` or any dunder attributes
 - `result` must be a plain Python dict: result = {{"key": value, ...}}
 - Each key is a short label describing the exploration (e.g. "summary", "top_5_by_revenue")
 - Each value must be a pandas DataFrame, pandas Series, or a scalar
-- Do not import pandas or read any file
-- Do not use __builtins__
-- If the user question is not relevant to the dataset, do not attempt to answer it or make unsupported assumptions.
-  Instead, ignore the question and proceed with general dataset exploration, selecting the most meaningful analyses based on the available data.
+- If the user question is not relevant to the dataset, ignore it and do general dataset exploration
+
+Chart instructions:
+- Include a `_charts` key in result containing a LIST of chart dicts (up to 3 charts max).
+- Each chart visualises a different angle of the data - do not repeat the same metric twice.
+- Pick charts that together tell a complete story: e.g. one ranking, one trend, one distribution.
+- If there is no meaningful metric to visualise, set `_charts` to an empty list [].
+
+Available chart types and when to use each:
+  "bar"         - compare values across categories (up to ~15 categories)
+  "line"        - values over time (labels must be time-ordered date strings)
+  "pie"         - part-of-whole for 2–5 categories only; values must sum to a meaningful total
+  "scatter"     - correlation between two numeric columns; labels = row identifiers, data = [[x,y], ...]
+  "histogram"   - distribution of a single numeric column; labels = bin range strings, data = counts
+  "grouped_bar" - compare multiple metrics side-by-side per category; requires series_labels
+
+Chart format rules:
+- Every chart must have: type, title, labels (list of strings), data (list of numbers or list-of-lists)
+- grouped_bar also requires: series_labels (list of strings, one per inner list in data)
+- scatter data format: [[x1,y1], [x2,y2], ...] - one [x,y] pair per label
+- labels and data must always have the same length
+- All values must be plain Python lists - use .tolist() to convert numpy arrays or pandas objects
+- title must be a short, descriptive string (under 10 words)
+
+Choosing the right chart type:
+- Time column present + aggregated by date → "line"
+- One metric ranked across categories → "bar"
+- Two numeric columns to compare → "scatter"
+- Distribution of a numeric column → "histogram"
+- Multiple metrics per category (e.g. revenue AND quantity per region) → "grouped_bar"
+- 2–5 category share of a total → "pie"
+- Never use "pie" for more than 5 categories - use "bar" instead
+- Never use "line" unless labels are time-ordered dates
 
 Respond in this exact format:
 
-EXPLORE: <some sentences — what angles you chose and why, referencing the user question if provided>
+EXPLORE: <some sentences - what angles you chose and why, referencing the user question if provided>
 CODE:
 ```python
-# TODO: Exploring logic
+# Exploration logic
 
 result = {{
     "key1": ...,
     "key2": ...,
     "key3": ...,
+    "_charts": [
+        {{
+            "type": "bar",
+            "title": "...",
+            "labels": [...],
+            "data": [...],
+        }},
+        {{
+            "type": "line",
+            "title": "...",
+            "labels": [...],
+            "data": [...],
+        }},
+    ],
 }}
 ```
