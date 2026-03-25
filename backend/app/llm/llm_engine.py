@@ -39,6 +39,27 @@ def generate_code(context: dict, user_question: str = "") -> tuple[str, str]:
     return _parse_code_response(raw)
 
 
+def generate_interesting_code(
+    context: dict,
+    explore_reason: str,
+    result_str: str,
+    user_question: str = "",
+) -> tuple[str, str]:
+    """
+    Second-pass: LLM looks at first-pass results and decides if there's
+    anything interesting worth digging into. Returns empty code if nothing notable.
+    Returns: (interesting_reason, pandas_code)
+    """
+    raw = _invoke("find_interesting.txt", {
+        "filename": context["filename"],
+        "schema": context["schema"],
+        "explore_reason": explore_reason,
+        "result": result_str,
+        "user_question": user_question or "No specific question provided.",
+    })
+    return _parse_code_response(raw)
+
+
 def reprompt_code(context: dict, broken_code: str, error: str) -> str:
     """
     Ask LLM to fix broken code given the error message.
@@ -59,6 +80,8 @@ def generate_insights(
     explore_reason: str,
     result: str,
     user_question: str = "",
+    interesting_reason: str = "",
+    interesting_result: str = "",
 ) -> str:
     """Generate plain-text insight from multi-section result."""
     return _invoke("generate_insights.txt", {
@@ -66,6 +89,8 @@ def generate_insights(
         "explore_reason": explore_reason,
         "result": result,
         "user_question": user_question or "No specific question provided.",
+        "interesting_reason": interesting_reason or "None.",
+        "interesting_result": interesting_result or "None.",
     })
 
 

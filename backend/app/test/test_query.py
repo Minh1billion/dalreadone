@@ -10,7 +10,6 @@ CREATED_PROJECTS: list[tuple[dict, int]] = []
 CSV_PATH = os.path.join(os.path.dirname(__file__), "data.csv")
 
 
-
 # AUTH
 def get_auth_header(username=None, password="123456") -> dict:
     if username is None:
@@ -18,14 +17,12 @@ def get_auth_header(username=None, password="123456") -> dict:
 
     session = requests.Session()
 
-    # Register (ignore if already exists)
     session.post(
         f"{BASE}/auth/register",
         json={"username": username, "password": password},
         timeout=10,
     )
 
-    # Login
     res = session.post(
         f"{BASE}/auth/login",
         json={"username": username, "password": password},
@@ -38,7 +35,6 @@ def get_auth_header(username=None, password="123456") -> dict:
     assert token, "No access_token returned"
 
     return {"Authorization": f"Bearer {token}"}
-
 
 
 # PROJECT
@@ -75,6 +71,33 @@ def upload_csv(headers: dict, project_id: int, filename="data.csv") -> int:
     return res.json()["id"]
 
 
+# HELPERS
+def assert_base_fields(data: dict):
+    """Assert fields present in every successful query response."""
+    for field in ("explore_reason", "result", "insight", "code"):
+        assert field in data, f"Missing field: {field}"
+        assert data[field], f"{field} should not be empty"
+
+    # interesting_* are optional but must be present as keys
+    assert "interesting_reason" in data, "Missing key: interesting_reason"
+    assert "interesting_result" in data, "Missing key: interesting_result"
+
+
+def print_response(data: dict):
+    print("Explore reason:", data["explore_reason"])
+    print("Insight preview:", data["insight"][:100], "...")
+    print("\n--- CODE ---")
+    print(data["code"])
+    print("\n--- RESULT ---")
+    print(data["result"])
+    if data.get("interesting_reason"):
+        print("\n--- INTERESTING REASON ---")
+        print(data["interesting_reason"])
+    if data.get("interesting_result"):
+        print("\n--- INTERESTING RESULT ---")
+        print(data["interesting_result"])
+
+
 # TESTS
 def test_query_success():
     """Happy path: upload CSV then query."""
@@ -86,7 +109,7 @@ def test_query_success():
         f"{BASE}/projects/{project_id}/files/{file_id}/query",
         json={"question": "Which region has the highest revenue?"},
         headers=headers,
-        timeout=10,
+        timeout=60,
     )
 
     assert res.status_code == 200, res.text
@@ -94,23 +117,58 @@ def test_query_success():
     data = res.json()
 
     assert data["user_question"] == "Which region has the highest revenue?"
-
-    assert "explore_reason" in data, "Missing field: explore_reason"
-    assert "result" in data, "Missing field: result"
-    assert "insight" in data, "Missing field: insight"
-    assert "code" in data, "Missing field: code"
-
-    assert data["explore_reason"], "explore_reason should not be empty"
-    assert data["insight"], "insight should not be empty"
-    assert data["code"], "code should not be empty"
-    assert data["result"] is not None, "result should not be None"
+    assert_base_fields(data)
 
     print("Query success OK:", data["explore_reason"])
-    print("Insight preview:", data["insight"][:80], "...")
-    print("\n--- CODE ---")
-    print(data["code"])
-    print("\n--- RESULT ---")
-    print(data["result"])
+    print_response(data)
+
+
+def test_query_interesting_findings():
+    """
+    Dataset with known anomalies (large revenue spike on one date, one region
+    dominating) should trigger a non-null interesting_reason from pass 2.
+    Not a hard assertion since LLM output is non-deterministic, but we verify
+    the pipeline runs end-to-end and the fields are present and well-typed.
+    """
+    headers = get_auth_header()
+    project_id = create_project(headers)
+    file_id = upload_csv(headers, project_id)
+
+    res = requests.post(
+        f"{BASE}/projects/{project_id}/files/{file_id}/query",
+        json={"question": ""},
+        headers=headers,
+        timeout=60,
+    )
+
+    assert res.status_code == 200, res.text
+
+    data = res.json()
+    assert_base_fields(data)
+
+    # interesting_reason and interesting_result must be str or None — never crash
+    assert isinstance(data["interesting_reason"], (str, type(None))), (
+        "interesting_reason must be str or None"
+    )
+    assert isinstance(data["interesting_result"], (str, type(None))), (
+        "interesting_result must be str or None"
+    )
+
+    # If pass 2 fired, both fields should be populated together
+    if data["interesting_reason"]:
+        assert data["interesting_result"], (
+            "interesting_result should be non-empty when interesting_reason is set"
+        )
+    if data["interesting_result"]:
+        assert data["interesting_reason"], (
+            "interesting_reason should be non-empty when interesting_result is set"
+        )
+
+    found = bool(data.get("interesting_reason"))
+    print(f"Interesting findings detected: {found}")
+    if found:
+        print("Interesting reason:", data["interesting_reason"])
+        print("Interesting result preview:", str(data["interesting_result"])[:200])
 
 
 def test_query_wrong_owner():
@@ -161,7 +219,8 @@ def test_query_file_not_found():
 
     assert res.status_code == 404, res.text
     print("Query file not found OK: 404")
-    
+
+
 def test_query_irrelevant_question():
     """Irrelevant question should fallback to general exploration."""
     headers = get_auth_header()
@@ -172,6 +231,7 @@ def test_query_irrelevant_question():
         f"{BASE}/projects/{project_id}/files/{file_id}/query",
         json={"question": "What is the weather in Paris today?"},
         headers=headers,
+        timeout=60,
     )
 
     assert res.status_code == 200, res.text
@@ -179,15 +239,7 @@ def test_query_irrelevant_question():
     data = res.json()
 
     assert data["user_question"] == "What is the weather in Paris today?"
-
-    assert "explore_reason" in data
-    assert "result" in data
-    assert "insight" in data
-    assert "code" in data
-
-    assert data["explore_reason"], "explore_reason should not be empty"
-    assert data["insight"], "insight should not be empty"
-    assert data["code"], "code should not be empty"
+    assert_base_fields(data)
 
     print("Irrelevant question handled OK")
     print("Explore reason:", data["explore_reason"])
@@ -217,6 +269,7 @@ if __name__ == "__main__":
         print("\n=== QUERY TESTS ===")
 
         test_query_success()
+        test_query_interesting_findings()
         test_query_wrong_owner()
         test_query_project_not_found()
         test_query_file_not_found()

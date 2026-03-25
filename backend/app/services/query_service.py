@@ -5,7 +5,12 @@ import traceback
 from app.models import File, Project
 from app.storage.s3_client import get_file_bytes
 from app.llm.context_builder import build_dataframe_context
-from app.llm.llm_engine import generate_code, generate_insights, reprompt_code
+from app.llm.llm_engine import (
+    generate_code,
+    generate_interesting_code,
+    generate_insights,
+    reprompt_code,
+)
 from app.sandbox.code_executor import run_with_retry
 
 
@@ -43,28 +48,56 @@ def run_query(
         file_bytes = get_file_bytes(record.s3_key)
         context = build_dataframe_context(file_bytes, record.filename)
 
-        # Generate multi-explore pandas code from LLM
+        # Pass 1: standard multi-angle exploration
         explore_reason, code = generate_code(context, user_question=user_question)
 
-        # Execute code with retry on failure
         result_str, final_code = run_with_retry(
             code=code,
             df=context["df"],
             reprompt_fn=_make_reprompt_fn(context),
         )
 
-        # Generate plain-text insight from multi-section result
+        # Pass 2: look for interesting/anomalous findings
+        interesting_reason = ""
+        interesting_result_str = ""
+
+        try:
+            int_reason, int_code = generate_interesting_code(
+                context=context,
+                explore_reason=explore_reason,
+                result_str=result_str,
+                user_question=user_question,
+            )
+
+            # Skip execution if LLM found nothing interesting (empty result dict)
+            is_empty = int_code.strip() in ("result = {}", "result={}")
+            if not is_empty:
+                interesting_result_str, _ = run_with_retry(
+                    code=int_code,
+                    df=context["df"],
+                    reprompt_fn=_make_reprompt_fn(context),
+                )
+                interesting_reason = int_reason
+        except Exception:
+            # Second pass is best-effort — never fail the whole request
+            traceback.print_exc()
+
+        # Generate final insights combining both passes
         insight = generate_insights(
             filename=record.filename,
             explore_reason=explore_reason,
             result=result_str,
             user_question=user_question,
+            interesting_reason=interesting_reason,
+            interesting_result=interesting_result_str,
         )
 
         return {
             "user_question": user_question or None,
             "explore_reason": explore_reason,
             "result": result_str,
+            "interesting_reason": interesting_reason or None,
+            "interesting_result": interesting_result_str or None,
             "insight": insight,
             "code": final_code,
         }
