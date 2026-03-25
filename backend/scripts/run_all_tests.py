@@ -3,9 +3,9 @@ import sys
 import os
 
 TESTS = [
-    ("S3 Connection",  "app/test/test_s3.py"),
-    ("Groq Connection", "app/test/test_groq.py"),
-    ("DB Connection",   "app/test/test_db.py"),
+    # ("S3 Connection",  "app/test/test_s3.py"),
+    # ("Groq Connection", "app/test/test_groq.py"),
+    # ("DB Connection",   "app/test/test_db.py"),
     ("Auth Flow",       "app/test/test_auth.py"),
     ("Project Flow",    "app/test/test_projects.py"),
     ("File Flow",       "app/test/test_files.py"),

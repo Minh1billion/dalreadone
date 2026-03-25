@@ -77,11 +77,16 @@ def assert_base_fields(data: dict):
     assert "interesting_reason" in data, "Missing key: interesting_reason"
     assert "interesting_result" in data, "Missing key: interesting_result"
 
-    # New schema: charts (list) instead of chart_data (single dict)
     assert "charts" in data, "Missing key: charts"
     assert "interesting_charts" in data, "Missing key: interesting_charts"
     assert isinstance(data["charts"], list), "charts must be a list"
     assert isinstance(data["interesting_charts"], list), "interesting_charts must be a list"
+
+    # cost_report is required — if missing, the new query_service.py was not deployed
+    assert "cost_report" in data, (
+        "Missing key: cost_report — make sure the new query_service.py is deployed and server restarted"
+    )
+    assert isinstance(data["cost_report"], dict), "cost_report must be a dict"
 
 
 def assert_chart(chart):
@@ -97,7 +102,6 @@ def assert_chart(chart):
     assert len(chart["labels"]) > 0, "chart labels must not be empty"
 
     if chart["type"] == "grouped_bar":
-        # data is list of lists, series_labels required
         assert "series_labels" in chart, "grouped_bar chart missing 'series_labels'"
         assert isinstance(chart["series_labels"], list), "series_labels must be a list"
         for series in chart["data"]:
@@ -117,6 +121,45 @@ def assert_charts_list(charts):
     assert len(charts) <= 3, "charts list must have at most 3 items"
     for chart in charts:
         assert_chart(chart)
+
+
+def print_cost_report(data: dict, label: str = ""):
+    """
+    Print cost_report from the response JSON.
+    This works regardless of whether the server console is visible,
+    because we read it directly from the HTTP response body.
+    """
+    report = data.get("cost_report")
+    if not report:
+        print(f"  [cost] NO cost_report in response — new query_service.py not deployed yet")
+        return
+
+    sep = "-" * 56
+    tag = f" [{label}]" if label else ""
+    print(f"\n{sep}")
+    print(f"  COST REPORT{tag}")
+    print(sep)
+    print(f"  total_tokens : {report.get('total_tokens', 0):>6}")
+    print(f"  prompt_tokens: {report.get('total_prompt_tokens', 0):>6}")
+    print(f"  output_tokens: {report.get('total_completion_tokens', 0):>6}")
+    print(f"  cost_usd     : ${report.get('total_cost_usd', 0):.6f}")
+    print(f"  latency_ms   : {report.get('total_latency_ms', 0):>6} ms")
+
+    skipped = report.get("skipped_stages", [])
+    if skipped:
+        print(f"  skipped      : {', '.join(skipped)}")
+
+    print(f"  {'stage':<30} {'in':>5} {'out':>5}  {'cost_usd':>10}  {'ms':>6}")
+    print(f"  {'-'*30} {'-'*5} {'-'*5}  {'-'*10}  {'-'*6}")
+    for call in report.get("calls", []):
+        if call.get("skipped"):
+            print(f"  {call['stage']:<30}  SKIPPED  ({call.get('skip_reason', '')})")
+        else:
+            print(
+                f"  {call['stage']:<30} {call['prompt_tokens']:>5} {call['completion_tokens']:>5}"
+                f"  ${call['cost_usd']:>9.6f}  {call['latency_ms']:>6}"
+            )
+    print(sep + "\n")
 
 
 def print_response(data: dict):
@@ -174,6 +217,7 @@ def test_query_success():
 
     print("Query success OK:", data["explore_reason"])
     print_response(data)
+    print_cost_report(data, label="test_query_success")
 
 
 def test_query_chart_structure():
@@ -205,6 +249,7 @@ def test_query_chart_structure():
         print(f"  pass1: type={c['type']}  title='{c['title']}'  points={len(c['labels'])}")
     for c in data["interesting_charts"]:
         print(f"  pass2: type={c['type']}  title='{c['title']}'  points={len(c['labels'])}")
+    print_cost_report(data, label="test_query_chart_structure")
 
 
 def test_query_interesting_findings():
@@ -241,6 +286,7 @@ def test_query_interesting_findings():
     print(f"Interesting findings detected: {found}")
     if found:
         print("Reason:", data["interesting_reason"])
+    print_cost_report(data, label="test_query_interesting_findings")
 
 
 def test_query_wrong_owner():
@@ -317,6 +363,7 @@ def test_query_irrelevant_question():
     print("Irrelevant question handled OK")
     print("Explore reason:", data["explore_reason"])
     print(f"Charts: {len(data['charts'])} pass1, {len(data['interesting_charts'])} pass2")
+    print_cost_report(data, label="test_query_irrelevant_question")
 
 
 # CLEANUP

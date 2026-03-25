@@ -12,16 +12,31 @@ The following code failed:
 Error:
 {error}
 
-Fix the code. Rules:
-- `df` is already loaded as a pandas DataFrame
-- `pd` (pandas) and `np` (numpy) are already available - do NOT import them
-- `datetime` module is already available - do NOT import it
+Fix the code. STRICT RULES - violating any of these will cause another failure:
+- `df` is ALREADY loaded as a pandas DataFrame - NEVER load, read, or create a new DataFrame
+- Do NOT call pd.read_csv(), pd.read_excel(), pd.read_table(), open(), or ANY file I/O function
+- Do NOT reassign or overwrite `df` - only read from it
 - Do NOT use any import statements - no `import`, no `from ... import`, no `__import__`
 - Do NOT use `__builtins__` or any dunder attributes
+- `pd` (pandas) and `np` (numpy) are already available - do not import them
+- `datetime` module is already available - do NOT import it
 - `result` must be a plain Python dict: result = {{"key": value, ...}}
 - Each value in the dict must be a pandas DataFrame, pandas Series, or a scalar
 - If the original code used `_chart` (single dict), convert it to `_charts` (list of dicts)
 - All chart labels and data must be plain Python lists - use .tolist() on any numpy/pandas objects
+
+WRONG (will fail again):
+```python
+import pandas as pd            # WRONG - never import
+df = pd.read_csv("data.csv")   # WRONG - never read files
+df = pd.read_csv("{filename}") # WRONG - never read files
+```
+
+CORRECT:
+```python
+# df is already a loaded DataFrame, just use it directly
+result = {{"total_rows": len(df), "summary": df.describe()}}
+```
 
 Respond ONLY with the fixed code block, no explanation:
 ```python

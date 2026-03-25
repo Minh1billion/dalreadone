@@ -13,8 +13,6 @@ _VALID_CHART_TYPES = {"bar", "line", "pie", "scatter", "histogram", "grouped_bar
 _DATETIME_MODULE = _datetime
 
 # Safe subset of Python built-ins available inside the sandbox.
-# Empty __builtins__ blocks str/int/len/list/range/zip/... which LLM-generated
-# pandas code uses constantly — whitelisting is safer than a full block.
 _SAFE_BUILTINS = {
     name: getattr(builtins, name)
     for name in (
@@ -38,23 +36,49 @@ _SAFE_BUILTINS = {
     )
 }
 
+# Patterns that indicate LLM tried to load a file or import a module.
+# These are the two root causes of the random failures:
+#   1. pd.read_csv(...) / pd.read_excel(...) → FileNotFoundError
+#   2. import ... / from ... import ... → NameError or ImportError
+_FORBIDDEN_PATTERNS: list[tuple[str, str]] = [
+    ("pd.read_csv",    "Do not load files - `df` is already provided."),
+    ("pd.read_excel",  "Do not load files - `df` is already provided."),
+    ("pd.read_",       "Do not load files - `df` is already provided."),
+    ("open(",          "Do not open files - `df` is already provided."),
+    ("read_csv(",      "Do not load files - `df` is already provided."),
+    ("read_excel(",    "Do not load files - `df` is already provided."),
+    ("import ",        "Do not use import statements - pd, np, datetime are pre-loaded."),
+    ("from ",          "Do not use import statements - pd, np, datetime are pre-loaded."),
+    ("__import__",     "Do not use __import__."),
+    ("__builtins__",   "Do not access __builtins__."),
+]
+
+
+def _validate_code_safety(code: str) -> str | None:
+    """
+    Scan generated code for forbidden patterns before exec.
+
+    Returns an error string describing the violation if found,
+    or None if the code looks safe.
+
+    This catches the two main failure modes early so the retry
+    loop gets a clear error message to send back to the LLM,
+    instead of a cryptic FileNotFoundError or NameError.
+    """
+    for pattern, reason in _FORBIDDEN_PATTERNS:
+        if pattern in code:
+            return (
+                f"Forbidden pattern detected: `{pattern}`. {reason} "
+                f"Remember: `df` is already a loaded pandas DataFrame. "
+                f"Never read files or import modules inside the generated code."
+            )
+    return None
+
 
 def _validate_single_chart(chart: dict) -> dict | None:
     """
     Validate one chart dict.
     Returns the cleaned chart or None if invalid.
-
-    Required keys:
-      - type: one of _VALID_CHART_TYPES
-      - title: non-empty string
-      - labels: list of strings (categories / date strings)
-      - data: list of numbers (or list-of-lists for grouped_bar / histogram)
-
-    For grouped_bar, data must be a list of series:
-      data = [[v1, v2, ...], [v1, v2, ...]]   -- one inner list per group
-      series_labels = ["Group A", "Group B"]  -- required for grouped_bar
-
-    For histogram, labels hold bin edges as strings and data holds counts.
     """
     if not isinstance(chart, dict):
         return None
@@ -72,7 +96,6 @@ def _validate_single_chart(chart: dict) -> dict | None:
         return None
 
     if chart_type == "grouped_bar":
-        # data is a list of series (list of lists)
         series_labels = chart.get("series_labels")
         if not isinstance(series_labels, list) or len(series_labels) == 0:
             return None
@@ -89,7 +112,6 @@ def _validate_single_chart(chart: dict) -> dict | None:
             "series_labels": series_labels,
         }
 
-    # All other types: data is a flat list, same length as labels
     if len(labels) != len(data):
         return None
 
@@ -104,8 +126,7 @@ def _validate_single_chart(chart: dict) -> dict | None:
 def _extract_charts(result: dict) -> list[dict]:
     """
     Pop the reserved `_charts` key from the result dict and validate every entry.
-    Also accepts the legacy `_chart` key (single dict) for backwards compatibility.
-
+    Also accepts the legacy `_chart` key for backwards compatibility.
     Returns a list of validated chart dicts (may be empty).
     """
     charts_raw = result.pop("_charts", None)
@@ -113,12 +134,10 @@ def _extract_charts(result: dict) -> list[dict]:
 
     candidates = []
 
-    # Prefer _charts (new format) over _chart (legacy)
     if charts_raw is not None:
         if isinstance(charts_raw, list):
             candidates = charts_raw
         elif isinstance(charts_raw, dict):
-            # LLM accidentally put a single dict instead of a list
             candidates = [charts_raw]
     elif legacy is not None:
         candidates = [legacy] if isinstance(legacy, dict) else []
@@ -129,14 +148,12 @@ def _extract_charts(result: dict) -> list[dict]:
         if v is not None:
             validated.append(v)
 
-    # Cap at 3 charts per pass to keep responses focused
     return validated[:3]
 
 
 def _serialize_result(result: dict) -> str:
     """
     Convert execution result to a readable string for LLM insight generation.
-    Supports: dict of DataFrames/Series/scalars, DataFrame, Series, or scalar.
     _charts/_chart keys are expected to have been popped before this call.
     """
     if isinstance(result, dict):
@@ -162,15 +179,22 @@ def _serialize_result(result: dict) -> str:
 
 def _exec_code(code: str, df: pd.DataFrame) -> tuple[bool, str, list[dict], str]:
     """
-    Execute pandas code in an isolated local scope.
+    Validate then execute pandas code in an isolated local scope.
     Returns: (success, result_str, charts, error_message)
+
+    Validation runs BEFORE exec so forbidden patterns (file reads,
+    imports) are caught with a clear message on the very first attempt,
+    giving the reprompt LLM accurate context to fix the code.
     """
+    # --- Safety check BEFORE exec ---
+    safety_error = _validate_code_safety(code)
+    if safety_error:
+        return False, "", [], safety_error
+
     local_scope = {
         "df": df.copy(),
         "pd": pd,
         "np": np,
-        # datetime is injected so LLM can use datetime.datetime.now() etc.
-        # without needing an import statement (which is blocked)
         "datetime": _DATETIME_MODULE,
     }
 
@@ -182,18 +206,16 @@ def _exec_code(code: str, df: pd.DataFrame) -> tuple[bool, str, list[dict], str]
             return False, "", [], "Code did not assign anything to `result`"
 
         if isinstance(result, dict) and len(result) == 0:
-            return False, "", [], "`result` dict is empty — add at least one key"
+            return False, "", [], "`result` dict is empty - add at least one key"
 
-        # Extract charts before serialising (mutates result dict)
         charts = []
         if isinstance(result, dict):
             charts = _extract_charts(result)
 
-            # After popping chart keys, result might be empty
             if len(result) == 0:
                 return (
                     False, "", [],
-                    "`result` only had chart keys — add at least one data key"
+                    "`result` only had chart keys - add at least one data key"
                 )
 
         return True, _serialize_result(result), charts, ""

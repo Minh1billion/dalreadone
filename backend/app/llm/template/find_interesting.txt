@@ -20,16 +20,31 @@ Your task: Look at the first-pass results and identify up to 3 genuinely interes
 - A correlation or ratio worth computing
 - A distribution skew or concentration in one group
 
-Rules:
-- Only add follow-up explorations if there is something truly worth investigating. If the data looks ordinary, return an empty result dict.
-- `df` is already loaded as a pandas DataFrame
-- `pd` (pandas) and `np` (numpy) are already available - do NOT import them
-- `datetime` module is already available if needed for date operations - do NOT import it
-- Do NOT use any import statements - no `import`, no `from ... import`, no `__import__`
+STRICT RULES — violating any of these will cause a runtime error:
+- `df` is ALREADY loaded as a pandas DataFrame — NEVER load, read, or create a new DataFrame
+- Do NOT call pd.read_csv(), pd.read_excel(), pd.read_table(), open(), or ANY file I/O function
+- Do NOT reassign or overwrite `df` — only read from it
+- Do NOT use any import statements — no `import`, no `from ... import`, no `__import__`
 - Do NOT use `__builtins__` or any dunder attributes
+- `pd` (pandas) and `np` (numpy) are already available — do not import them
+- `datetime` module is already available if needed for date operations — do NOT import it
 - `result` must be a plain Python dict: result = {{"key": value, ...}}
 - Each key should describe the finding clearly (e.g. "revenue_spike_feb11", "top_product_concentration")
 - Each value must be a pandas DataFrame, pandas Series, or a scalar
+- Only add follow-up explorations if there is something truly worth investigating. If the data looks ordinary, return an empty result dict.
+
+WRONG (will fail):
+```python
+import pandas as pd            # WRONG - never import
+df = pd.read_csv("data.csv")   # WRONG - never read files
+df = pd.read_csv("{filename}") # WRONG - never read files
+```
+
+CORRECT:
+```python
+# df is already a loaded DataFrame, just use it directly
+result = {{"outlier_rows": df[df["revenue"] > df["revenue"].quantile(0.99)]}}
+```
 
 Chart instructions:
 - Include a `_charts` key containing a LIST of chart dicts (up to 2 charts max) if the findings are best shown visually.
@@ -51,7 +66,7 @@ Respond in this exact format:
 EXPLORE: <1-2 sentences describing what interesting patterns you spotted and what you will investigate>
 CODE:
 ```python
-# Follow-up explorations based on interesting patterns
+# Follow-up explorations — df is already loaded, do NOT read any file
 
 result = {{
     "key1": ...,

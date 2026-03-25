@@ -24,16 +24,31 @@ Always cover at least 3 of these exploration types that are most relevant:
 - top_bottom: top 5 and bottom 5 groups by a relevant metric
 - specific: some key stats that can be extracted from the specific domain of data
 
-Rules:
-- `df` is already loaded as a pandas DataFrame
-- `pd` (pandas) and `np` (numpy) are already available - do NOT import them
-- `datetime` module is already available if needed for date operations - do NOT import it
+STRICT RULES - violating any of these will cause a runtime error:
+- `df` is ALREADY loaded as a pandas DataFrame - NEVER load, read, or create a new DataFrame
+- Do NOT call pd.read_csv(), pd.read_excel(), pd.read_table(), open(), or ANY file I/O function
+- Do NOT reassign or overwrite `df` - only read from it
 - Do NOT use any import statements - no `import`, no `from ... import`, no `__import__`
 - Do NOT use `__builtins__` or any dunder attributes
+- `pd` (pandas) and `np` (numpy) are already available - do not import them
+- `datetime` module is already available if needed for date operations - do NOT import it
 - `result` must be a plain Python dict: result = {{"key": value, ...}}
 - Each key is a short label describing the exploration (e.g. "summary", "top_5_by_revenue")
 - Each value must be a pandas DataFrame, pandas Series, or a scalar
 - If the user question is not relevant to the dataset, ignore it and do general dataset exploration
+
+WRONG (will fail):
+```python
+import pandas as pd          # WRONG - never import
+df = pd.read_csv("data.csv") # WRONG - never read files
+df = pd.read_csv("{filename}") # WRONG - never read files
+```
+
+CORRECT:
+```python
+# df is already a loaded DataFrame, just use it directly
+result = {{"total_rows": len(df), "summary": df.describe()}}
+```
 
 Chart instructions:
 - Include a `_charts` key in result containing a LIST of chart dicts (up to 3 charts max).
@@ -72,7 +87,7 @@ Respond in this exact format:
 EXPLORE: <some sentences - what angles you chose and why, referencing the user question if provided>
 CODE:
 ```python
-# Exploration logic
+# Exploration logic - df is already loaded, do NOT read any file
 
 result = {{
     "key1": ...,
