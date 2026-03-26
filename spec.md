@@ -9,7 +9,7 @@ Refresh token is stored in an `httpOnly` cookie, managed automatically by the br
 
 ## Auth
 
-### POST /auth/register
+### POST /api/auth/register
 Register a new user.
 
 **Request**
@@ -24,7 +24,7 @@ Refresh token is set as an `httpOnly` cookie.
 
 ---
 
-### POST /auth/login
+### POST /api/auth/login
 Log in with username + password.
 
 **Request**
@@ -38,7 +38,7 @@ Log in with username + password.
 
 ---
 
-### POST /auth/refresh
+### POST /api/auth/refresh
 Get a new access token using the refresh cookie.
 
 No request body. Cookie is sent automatically.
@@ -51,7 +51,7 @@ No request body. Cookie is sent automatically.
 
 ---
 
-### POST /auth/logout
+### POST /api/auth/logout
 Clear the refresh cookie.
 
 **Response 200**
@@ -87,7 +87,7 @@ Same pattern as Google callback.
 
 ## Projects
 
-### POST /projects
+### POST /api/projects
 Create a new project. 🔒
 
 **Request**
@@ -106,7 +106,7 @@ Create a new project. 🔒
 
 ---
 
-### GET /projects
+### GET /api/projects
 List all projects for the current user. 🔒
 
 **Response 200**
@@ -118,7 +118,7 @@ List all projects for the current user. 🔒
 
 ---
 
-### GET /projects/{project_id}
+### GET /api/projects/{project_id}
 Get a single project. 🔒
 
 **Response 200** - same shape as above.
@@ -127,7 +127,7 @@ Get a single project. 🔒
 
 ---
 
-### PATCH /projects/{project_id}
+### PATCH /api/projects/{project_id}
 Rename a project. 🔒
 
 **Request**
@@ -138,7 +138,7 @@ Rename a project. 🔒
 
 ---
 
-### DELETE /projects/{project_id}
+### DELETE /api/projects/{project_id}
 Delete project and all its files (S3 + DB). 🔒
 
 **Response 204** - no content.
@@ -147,7 +147,7 @@ Delete project and all its files (S3 + DB). 🔒
 
 ## Files
 
-### POST /projects/{project_id}/files
+### POST /api/projects/{project_id}/files
 Upload a CSV or Excel file to a project. 🔒
 
 **Request** - `multipart/form-data`
@@ -171,7 +171,7 @@ Max 5 files per project.
 
 ---
 
-### GET /projects/{project_id}/files
+### GET /api/projects/{project_id}/files
 List files in a project. 🔒
 
 **Response 200**
@@ -190,7 +190,7 @@ List files in a project. 🔒
 
 ---
 
-### DELETE /projects/{project_id}/files/{file_id}
+### DELETE /api/projects/{project_id}/files/{file_id}
 Delete a file from S3 and DB. 🔒
 
 **Response 204** - no content.
@@ -200,7 +200,7 @@ Delete a file from S3 and DB. 🔒
 
 ## Query
 
-### POST /projects/{project_id}/files/{file_id}/query
+### POST /api/projects/{project_id}/files/{file_id}/query
 Run an EDA/analysis query against a file. 🔒
 
 This is the core endpoint. The LLM runs two passes (explore + anomaly detection) and returns results, charts, and a plain-text insight. May take 10–30 seconds.

@@ -25,6 +25,7 @@ bcrypt
 python-jose[cryptography]
 authlib
 itsdangerous
+httpx
 
 # API
 fastapi

@@ -1,17 +1,17 @@
 from fastapi import FastAPI
-from starlette.middleware.sessions import SessionMiddleware
 
-from app.core.config import Config
-from app.routers import auth, files, projects, query
+from app.routers import auth, files, projects, query, oauth
 
 app = FastAPI()
 
-app.add_middleware(SessionMiddleware, secret_key=Config.JWT_SECRET_KEY)
+# Oauth routes
+app.include_router(oauth.router)
 
-app.include_router(auth.router)
-app.include_router(projects.router)
-app.include_router(files.router)
-app.include_router(query.router)
+# API routes
+app.include_router(auth.router, prefix="/api")
+app.include_router(projects.router, prefix="/api")
+app.include_router(files.router, prefix="/api")
+app.include_router(query.router, prefix="/api")
 
 
 @app.get("/")

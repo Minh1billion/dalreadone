@@ -44,4 +44,4 @@ class Config:
 
     # App
     ENV = os.environ.get("ENV", "development")
-    FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+    FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
