@@ -3,31 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useRunQuery } from '../hooks/useRunQuery'
 import FilePanel from '../components/query/FilePanel'
 import ResultPanel from '../components/query/ResultPanel'
-
-function IconBack() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="19" y1="12" x2="5" y2="12"/>
-      <polyline points="12 19 5 12 12 5"/>
-    </svg>
-  )
-}
-
-function IconSend({ loading }: { loading: boolean }) {
-  if (loading) {
-    return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin">
-        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-      </svg>
-    )
-  }
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="22" y1="2" x2="11" y2="13"/>
-      <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-    </svg>
-  )
-}
+import { IconBack, IconSend } from '../components/ui/icons'
 
 export default function QueryPage() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -73,14 +49,14 @@ export default function QueryPage() {
         <span className="text-sm font-medium text-gray-900">Query</span>
       </div>
 
-      {/* ── Split layout ── */}
+      {/* ── Split layout: 25 / 75 ── */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* ── LEFT: Files + Query input ── */}
-        <div className="w-1/2 border-r border-gray-200 flex flex-col bg-white">
+        {/* ── LEFT 25%: Files + Query input ── */}
+        <div className="w-1/4 border-r border-gray-200 flex flex-col bg-white min-w-0">
 
           {/* File panel */}
-          <div className="flex-none border-b border-gray-100 p-5">
+          <div className="flex-none border-b border-gray-100 p-4">
             <FilePanel
               projectId={pid}
               activeFileId={activeFileId}
@@ -89,47 +65,47 @@ export default function QueryPage() {
           </div>
 
           {/* Query input */}
-          <div className="flex-1 flex flex-col p-5">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Ask a question
+          <div className="flex-1 flex flex-col p-4 min-h-0">
+            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+              Question
             </label>
 
             {!activeFileId && (
-              <div className="mb-3 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div className="mb-3 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-2">
+                <svg className="flex-none mt-0.5" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                 </svg>
-                Select a file first to run a query.
+                Select a file first.
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3 flex-1">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-3 flex-1 min-h-0">
               <textarea
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={
                   activeFileId
-                    ? 'e.g. "Which product category generates the most revenue?" (Enter to run)'
+                    ? 'e.g. "Which category has the most revenue?" (Enter to run)'
                     : 'Select a file to enable querying...'
                 }
                 disabled={!activeFileId || loading}
-                rows={4}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-shadow resize-none disabled:bg-gray-50 disabled:text-gray-400"
+                rows={5}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-xs placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-shadow resize-none disabled:bg-gray-50 disabled:text-gray-400"
               />
 
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-gray-400">
-                  Leave blank to auto-explore the dataset.
-                </p>
+              <div className="flex flex-col gap-2">
                 <button
                   type="submit"
                   disabled={!activeFileId || loading}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-md transition-colors disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium rounded-md transition-colors disabled:opacity-50"
                 >
                   <IconSend loading={loading} />
                   {loading ? 'Analysing...' : 'Run'}
                 </button>
+                <p className="text-xs text-gray-400 text-center">
+                  Leave blank to auto-explore.
+                </p>
               </div>
 
               {error && (
@@ -141,8 +117,8 @@ export default function QueryPage() {
           </div>
         </div>
 
-        {/* ── RIGHT: Results ── */}
-        <div className="w-1/2 overflow-y-auto">
+        {/* ── RIGHT 75%: Results ── */}
+        <div className="w-3/4 overflow-y-auto">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8">
               <div className="w-10 h-10 rounded-full border-2 border-primary-600 border-t-transparent animate-spin" />

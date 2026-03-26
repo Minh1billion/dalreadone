@@ -1,7 +1,0 @@
-npm install axios zustand @tanstack/react-query react-router-dom recharts react-markdown
-
-npm install -D tailwindcss postcss autoprefixer
-
-npx tailwindcss@3 init -p
-
-npx shadcn@latest init
