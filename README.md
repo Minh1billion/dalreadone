@@ -38,7 +38,7 @@ REFRESH_TOKEN_EXPIRE_DAYS=7
 
 # LLM
 GROQ_API_KEY=your-groq-api-key
-MODEL_ID=llama3-70b-8192
+MODEL_ID=llama-3.3-70b-versatile
 
 # S3
 AWS_REGION=ap-southeast-1
@@ -62,6 +62,13 @@ FRONTEND_URL=http://localhost:3000
 ```
 
 ### 3. Build and run
+
+Install necessary library for backend:
+
+```bash
+pip install -r ./backend/requirements.txt
+```
+Then run:
 
 ```bash
 docker compose up --build
