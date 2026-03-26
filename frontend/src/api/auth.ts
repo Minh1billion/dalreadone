@@ -2,14 +2,14 @@ import { api } from './axios'
 
 export const authApi = {
   login: (username: string, password: string) =>
-    api.post('/api/auth/login', { username, password }),
+    api.post('/auth/login', { username, password }),
 
   register: (username: string, password: string) =>
-    api.post('/api/auth/register', { username, password }),
+    api.post('/auth/register', { username, password }),
 
   logout: () =>
-    api.post('/api/auth/logout'),
+    api.post('/auth/logout'),
 
   refresh: () =>
-    api.post('/api/auth/refresh'),
+    api.post('/auth/refresh'),
 }

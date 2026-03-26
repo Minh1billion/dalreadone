@@ -25,7 +25,7 @@ export default function LoginPage() {
   }
 
   function handleOAuth(provider: 'google' | 'github') {
-    window.location.href = `${import.meta.env.VITE_API_BASE_URL}/auth/${provider}`
+    window.location.href = `/auth/${provider}`
   }
 
   return (
