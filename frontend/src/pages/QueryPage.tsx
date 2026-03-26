@@ -1,45 +1,30 @@
-import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { useRunQuery } from '../hooks/useRunQuery'
+import { useQueryPage } from '../hooks/useQueryPage'
 import FilePanel from '../components/query/FilePanel'
 import ResultPanel from '../components/query/ResultPanel'
 import { IconBack, IconSend } from '../components/ui/icons'
 
 export default function QueryPage() {
-  const { projectId } = useParams<{ projectId: string }>()
-  const navigate = useNavigate()
-
-  const [activeFileId, setActiveFileId] = useState<number | null>(null)
-  const [question, setQuestion] = useState('')
-
-  const pid = Number(projectId)
-  const { data, loading, error, run, reset } = useRunQuery(pid, activeFileId)
-
-  function handleSelectFile(id: number) {
-    setActiveFileId(id || null)
-    reset()
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!activeFileId) return
-    await run(question)
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSubmit(e as any)
-    }
-  }
+  const {
+    pid,
+    activeFileId,
+    question,
+    setQuestion,
+    handleSelectFile,
+    handleSubmit,
+    handleKeyDown,
+    handleBack,
+    data,
+    loading,
+    error,
+  } = useQueryPage()
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
 
-      {/* ── Top bar ── */}
+      {/* Top bar */}
       <div className="flex-none border-b border-gray-200 bg-white px-5 py-3 flex items-center gap-3">
         <button
-          onClick={() => navigate('/')}
+          onClick={handleBack}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
         >
           <IconBack />
@@ -49,13 +34,12 @@ export default function QueryPage() {
         <span className="text-sm font-medium text-gray-900">Query</span>
       </div>
 
-      {/* ── Split layout: 25 / 75 ── */}
+      {/* Split layout 25 / 75 */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* ── LEFT 25%: Files + Query input ── */}
+        {/* LEFT 25% */}
         <div className="w-1/4 border-r border-gray-200 flex flex-col bg-white min-w-0">
 
-          {/* File panel */}
           <div className="flex-none border-b border-gray-100 p-4">
             <FilePanel
               projectId={pid}
@@ -64,7 +48,6 @@ export default function QueryPage() {
             />
           </div>
 
-          {/* Query input */}
           <div className="flex-1 flex flex-col p-4 min-h-0">
             <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
               Question
@@ -103,9 +86,7 @@ export default function QueryPage() {
                   <IconSend loading={loading} />
                   {loading ? 'Analysing...' : 'Run'}
                 </button>
-                <p className="text-xs text-gray-400 text-center">
-                  Leave blank to auto-explore.
-                </p>
+                <p className="text-xs text-gray-400 text-center">Leave blank to auto-explore.</p>
               </div>
 
               {error && (
@@ -117,15 +98,29 @@ export default function QueryPage() {
           </div>
         </div>
 
-        {/* ── RIGHT 75%: Results ── */}
+        {/* RIGHT 75% */}
         <div className="w-3/4 overflow-y-auto">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8">
-              <div className="w-10 h-10 rounded-full border-2 border-primary-600 border-t-transparent animate-spin" />
-              <p className="text-sm font-medium text-gray-700">Analysing your data...</p>
-              <p className="text-xs text-gray-400 max-w-xs">
-                Running multi-pass exploration. This may take a few seconds.
-              </p>
+              {/* Show stale result behind a loading overlay if we have previous data */}
+              {data ? (
+                <div className="w-full h-full relative">
+                  <div className="absolute inset-0 bg-white/70 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-3">
+                    <div className="w-10 h-10 rounded-full border-2 border-primary-600 border-t-transparent animate-spin" />
+                    <p className="text-sm font-medium text-gray-700">Analysing your data...</p>
+                    <p className="text-xs text-gray-400 max-w-xs">Running multi-pass exploration.</p>
+                  </div>
+                  <div className="p-5 opacity-40 pointer-events-none">
+                    <ResultPanel data={data} />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="w-10 h-10 rounded-full border-2 border-primary-600 border-t-transparent animate-spin" />
+                  <p className="text-sm font-medium text-gray-700">Analysing your data...</p>
+                  <p className="text-xs text-gray-400 max-w-xs">Running multi-pass exploration. This may take a few seconds.</p>
+                </>
+              )}
             </div>
           ) : data ? (
             <div className="p-5">
