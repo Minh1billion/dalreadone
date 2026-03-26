@@ -3,6 +3,10 @@ from sqlalchemy import text
 from app.db.session import SessionLocal, engine
 from app.models import Base, User, Project, File
 
+from app.core.config import Config
+
+print(engine.url)
+print(f"USER={Config.POSTGRES_USER}, PASS={Config.POSTGRES_PASSWORD}, HOST={Config.POSTGRES_HOST}")
 
 def test_db_connection():
     with engine.connect() as conn:

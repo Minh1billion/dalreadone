@@ -1,6 +1,6 @@
 import requests
 
-BASE = "http://localhost:8000"
+BASE = "http://localhost:8000/api"
 
 CREATED_PROJECT_IDS = []
 

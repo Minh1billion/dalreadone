@@ -4,7 +4,7 @@ import random
 import uuid
 import requests
 
-BASE = "http://localhost:8000"
+BASE = "http://localhost:8000/api"
 CREATED_PROJECTS: list[tuple[dict, int]] = []
 CSV_PATH = os.path.join(os.path.dirname(__file__), "data.csv")
 

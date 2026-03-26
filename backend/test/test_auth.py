@@ -6,7 +6,7 @@ session = requests.Session()
 
 # Register  
 def test_register():
-    res = session.post(f"{BASE}/auth/register", json={
+    res = session.post(f"{BASE}/api/auth/register", json={
         "username": "testuser",
         "password": "123456"
     })
@@ -19,7 +19,7 @@ def test_register():
 
 # Login  
 def test_login():
-    res = session.post(f"{BASE}/auth/login", json={
+    res = session.post(f"{BASE}/api/auth/login", json={
         "username": "testuser",
         "password": "123456"
     })
@@ -30,7 +30,7 @@ def test_login():
     return data["access_token"]
 
 def test_login_wrong_password():
-    res = session.post(f"{BASE}/auth/login", json={
+    res = session.post(f"{BASE}/api/auth/login", json={
         "username": "testuser",
         "password": "wrongpass"
     })
@@ -38,7 +38,7 @@ def test_login_wrong_password():
     print("Login wrong password OK: 401")
 
 def test_login_wrong_username():
-    res = session.post(f"{BASE}/auth/login", json={
+    res = session.post(f"{BASE}/api/auth/login", json={
         "username": "nobody",
         "password": "123456"
     })
@@ -48,7 +48,7 @@ def test_login_wrong_username():
 
 # Refresh  
 def test_refresh():
-    res = session.post(f"{BASE}/auth/refresh")
+    res = session.post(f"{BASE}/api/auth/refresh")
     assert res.status_code == 200, res.text
     data = res.json()
     assert "access_token" in data
@@ -58,12 +58,12 @@ def test_refresh():
 
 # Logout  
 def test_logout():
-    res = session.post(f"{BASE}/auth/logout")
+    res = session.post(f"{BASE}/api/auth/logout")
     assert res.status_code == 200, res.text
     print("Logout OK:", res.json())
 
 def test_refresh_after_logout():
-    res = session.post(f"{BASE}/auth/refresh")
+    res = session.post(f"{BASE}/api/auth/refresh")
     assert res.status_code == 401, res.text
     print("Refresh after logout OK: 401")
 

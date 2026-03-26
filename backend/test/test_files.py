@@ -1,7 +1,7 @@
 import io
 import requests
 
-BASE = "http://localhost:8000"
+BASE = "http://localhost:8000/api"
 
 CREATED_PROJECTS: list[tuple[dict, int]] = []
 
