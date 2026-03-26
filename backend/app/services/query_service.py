@@ -36,12 +36,12 @@ def _make_reprompt_fn(context: dict, tracker: CostTracker):
     The attempt counter in the stage name (reprompt_code#1, #2 ...) lets
     the tracker show exactly how many retries happened.
     """
-    attempt_box = [0]   # mutable box so the closure can increment it
+    attempt_box = [0]
 
     def reprompt_fn(broken_code: str, error: str) -> str:
         attempt_box[0] += 1
         stage = f"reprompt_code#{attempt_box[0]}"
-        return reprompt_code(context, broken_code, error, tracker=tracker)
+        return reprompt_code(context, broken_code, error, tracker=tracker, stage=stage)
 
     return reprompt_fn
 
@@ -70,13 +70,12 @@ def run_query(
         interesting_charts   : list[dict],
         insight              : str,
         code                 : str,
-        cost_report          : dict,   # token counts + USD cost per stage
+        cost_report          : dict,
       }
     """
     tracker = CostTracker()
 
     try:
-        # --- Auth / existence checks ---
         project = db.query(Project).filter(Project.id == project_id).first()
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
@@ -111,8 +110,6 @@ def run_query(
         interesting_result_str  = ""
         interesting_charts: list[dict] = []
 
-        # generate_interesting_code returns ("", "") when result is too short
-        # to be worth a second LLM call (skip heuristic).
         int_reason, int_code = generate_interesting_code(
             context=context,
             explore_reason=explore_reason,
@@ -122,7 +119,6 @@ def run_query(
         )
 
         if not int_reason and not int_code:
-            # Heuristic fired — record the skip so the cost report is honest
             tracker.record_skip(
                 stage="find_interesting",
                 reason=f"pass-1 result too short ({len(result_str)} < {INTERESTING_MIN_CHARS} chars)",
@@ -151,7 +147,6 @@ def run_query(
             tracker=tracker,
         )
 
-        # Print cost to console with clear separator so it is visible between test outputs
         sep = "=" * 60
         print(f"\n{sep}")
         print(tracker.summary())

@@ -6,40 +6,26 @@ import datetime as _datetime
 MAX_RETRIES = 3
 MAX_RESULT_ROWS = 50
 
-# All chart types the LLM can request
 _VALID_CHART_TYPES = {"bar", "line", "pie", "scatter", "histogram", "grouped_bar"}
-
-# Pre-injected datetime so LLM never needs to import it
 _DATETIME_MODULE = _datetime
 
-# Safe subset of Python built-ins available inside the sandbox.
 _SAFE_BUILTINS = {
     name: getattr(builtins, name)
     for name in (
-        # type constructors
         "bool", "bytes", "complex", "dict", "float", "frozenset",
         "int", "list", "set", "str", "tuple",
-        # iteration / functional
         "all", "any", "enumerate", "filter", "map", "range",
         "reversed", "sorted", "zip",
-        # inspection / comparison
         "abs", "callable", "chr", "divmod", "getattr", "hasattr",
         "hash", "id", "isinstance", "issubclass", "iter", "len",
         "max", "min", "next", "ord", "pow", "repr", "round", "sum",
-        # formatting
         "format", "print",
-        # singletons
         "None", "True", "False",
-        # exceptions LLM code may raise or catch
         "Exception", "ValueError", "TypeError", "KeyError",
         "IndexError", "AttributeError", "StopIteration",
     )
 }
 
-# Patterns that indicate LLM tried to load a file or import a module.
-# These are the two root causes of the random failures:
-#   1. pd.read_csv(...) / pd.read_excel(...) → FileNotFoundError
-#   2. import ... / from ... import ... → NameError or ImportError
 _FORBIDDEN_PATTERNS: list[tuple[str, str]] = [
     ("pd.read_csv",    "Do not load files - `df` is already provided."),
     ("pd.read_excel",  "Do not load files - `df` is already provided."),
@@ -51,20 +37,15 @@ _FORBIDDEN_PATTERNS: list[tuple[str, str]] = [
     ("from ",          "Do not use import statements - pd, np, datetime are pre-loaded."),
     ("__import__",     "Do not use __import__."),
     ("__builtins__",   "Do not access __builtins__."),
+    ("__class__",      "Do not access __class__ or use MRO-based introspection."),
+    ("__mro__",        "Do not access __mro__."),
+    ("__subclasses__", "Do not access __subclasses__."),
+    ("__globals__",    "Do not access __globals__."),
+    ("__base__",       "Do not access __base__."),
 ]
 
 
 def _validate_code_safety(code: str) -> str | None:
-    """
-    Scan generated code for forbidden patterns before exec.
-
-    Returns an error string describing the violation if found,
-    or None if the code looks safe.
-
-    This catches the two main failure modes early so the retry
-    loop gets a clear error message to send back to the LLM,
-    instead of a cryptic FileNotFoundError or NameError.
-    """
     for pattern, reason in _FORBIDDEN_PATTERNS:
         if pattern in code:
             return (
@@ -76,10 +57,6 @@ def _validate_code_safety(code: str) -> str | None:
 
 
 def _validate_single_chart(chart: dict) -> dict | None:
-    """
-    Validate one chart dict.
-    Returns the cleaned chart or None if invalid.
-    """
     if not isinstance(chart, dict):
         return None
 
@@ -124,16 +101,10 @@ def _validate_single_chart(chart: dict) -> dict | None:
 
 
 def _extract_charts(result: dict) -> list[dict]:
-    """
-    Pop the reserved `_charts` key from the result dict and validate every entry.
-    Also accepts the legacy `_chart` key for backwards compatibility.
-    Returns a list of validated chart dicts (may be empty).
-    """
     charts_raw = result.pop("_charts", None)
     legacy = result.pop("_chart", None)
 
     candidates = []
-
     if charts_raw is not None:
         if isinstance(charts_raw, list):
             candidates = charts_raw
@@ -152,10 +123,6 @@ def _extract_charts(result: dict) -> list[dict]:
 
 
 def _serialize_result(result: dict) -> str:
-    """
-    Convert execution result to a readable string for LLM insight generation.
-    _charts/_chart keys are expected to have been popped before this call.
-    """
     if isinstance(result, dict):
         sections = []
         for key, val in result.items():
@@ -210,6 +177,7 @@ def _exec_code(code: str, df: pd.DataFrame) -> tuple[bool, str, list[dict], str]
 
     except Exception as e:
         return False, "", [], str(e)
+
 
 def run_with_retry(
     code: str,

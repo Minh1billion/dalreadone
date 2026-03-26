@@ -18,7 +18,11 @@ def build_dataframe_context(file_bytes: bytes, filename: str) -> dict:
                 f"mean={df[col].mean():.2f}, nulls={null_count}"
             )
         else:
-            top = df[col].value_counts().index[0] if not df[col].empty else "N/A"
+            # guard against all-null columns before calling value_counts()
+            if df[col].notna().any():
+                top = df[col].value_counts().index[0]
+            else:
+                top = "N/A"
             stats_lines.append(f"- {col}: top_value={top}, nulls={null_count}")
 
     return {
