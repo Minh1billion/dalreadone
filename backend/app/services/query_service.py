@@ -40,6 +40,7 @@ def _make_reprompt_fn(context: dict, tracker: CostTracker):
 
     def reprompt_fn(broken_code: str, error: str) -> str:
         attempt_box[0] += 1
+        print(f"[REPROMPT attempt {attempt_box[0]}]\nERROR: {error}\nCODE:\n{broken_code}\n")
         stage = f"reprompt_code#{attempt_box[0]}"
         return reprompt_code(context, broken_code, error, tracker=tracker, stage=stage)
 

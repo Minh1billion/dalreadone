@@ -2,6 +2,7 @@ import builtins
 import pandas as pd
 import numpy as np
 import datetime as _datetime
+import re
 
 MAX_RETRIES = 3
 MAX_RESULT_ROWS = 50
@@ -27,32 +28,31 @@ _SAFE_BUILTINS = {
 }
 
 _FORBIDDEN_PATTERNS: list[tuple[str, str]] = [
-    ("pd.read_csv",    "Do not load files - `df` is already provided."),
-    ("pd.read_excel",  "Do not load files - `df` is already provided."),
-    ("pd.read_",       "Do not load files - `df` is already provided."),
-    ("open(",          "Do not open files - `df` is already provided."),
-    ("read_csv(",      "Do not load files - `df` is already provided."),
-    ("read_excel(",    "Do not load files - `df` is already provided."),
-    ("import ",        "Do not use import statements - pd, np, datetime are pre-loaded."),
-    ("from ",          "Do not use import statements - pd, np, datetime are pre-loaded."),
-    ("__import__",     "Do not use __import__."),
-    ("__builtins__",   "Do not access __builtins__."),
-    ("__class__",      "Do not access __class__ or use MRO-based introspection."),
-    ("__mro__",        "Do not access __mro__."),
-    ("__subclasses__", "Do not access __subclasses__."),
-    ("__globals__",    "Do not access __globals__."),
-    ("__base__",       "Do not access __base__."),
+    (r"^\s*import\s+",          "Do not use import statements"),
+    (r"^\s*from\s+\w+\s+import", "Do not use from...import statements"),
+    (r"pd\.read_",              "Do not load files"),
+    (r"open\s*\(",              "Do not open files"),
+    (r"__import__",             "Do not use __import__"),
+    (r"__builtins__",           "Do not access __builtins__"),
+    (r"__class__",              "Do not access __class__"),
+    (r"__mro__",                "Do not access __mro__"),
+    (r"__subclasses__",         "Do not access __subclasses__"),
+    (r"__globals__",            "Do not access __globals__"),
+    (r"__base__",               "Do not access __base__"),
 ]
-
 
 def _validate_code_safety(code: str) -> str | None:
     for pattern, reason in _FORBIDDEN_PATTERNS:
-        if pattern in code:
-            return (
-                f"Forbidden pattern detected: `{pattern}`. {reason} "
-                f"Remember: `df` is already a loaded pandas DataFrame. "
-                f"Never read files or import modules inside the generated code."
-            )
+        for line in code.splitlines():
+            # Bỏ qua comment
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue
+            if re.search(pattern, line):
+                return (
+                    f"Forbidden pattern: `{pattern}`. {reason}. "
+                    f"`df` is already a loaded pandas DataFrame."
+                )
     return None
 
 
