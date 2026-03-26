@@ -18,23 +18,17 @@ api.interceptors.response.use(
         if (error.response?.status === 401) {
             try {
                 const { data } = await axios.post(
-                    `${import.meta.env.VITE_API_BASE_URL}/api/auth/refresh`,
-                    {}, { withCredentials: true }
+                    `${import.meta.env.VITE_API_BASE_URL}/auth/refresh`,
+                    {},
+                    { withCredentials: true }
                 );
                 useAuthStore.getState().setToken(data.access_token);
                 error.config.headers.Authorization = `Bearer ${data.access_token}`;
                 return api(error.config);
             } catch {
-                useAuthStore.getState().clear()
+                useAuthStore.getState().clear();
             }
         }
-
         return Promise.reject(error);
     }
-)
-
-export const queryApi = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL,
-    withCredentials: true,
-    timeout: 60_000,
-})
+);

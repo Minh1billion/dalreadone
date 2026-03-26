@@ -11,7 +11,7 @@ import ProjectCard from '../components/projects/ProjectCard'
 import ProjectModal from '../components/projects/ProjectModal'
 import DeleteConfirm from '../components/projects/DeleteConfirm'
 import EmptyState from '../components/projects/EmptyState'
-import type { Project } from '../components/projects/types'
+import type { Project } from '../api/project'
 
 type Modal =
   | { type: 'create' }

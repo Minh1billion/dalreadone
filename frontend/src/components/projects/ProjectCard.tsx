@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { IconFolder, IconArrow, IconPencil, IconTrash, IconDots } from '../ui/icons'
-import type { Project } from './types'
+import type { Project } from '../../api/project'
 
 interface Props {
   project: Project

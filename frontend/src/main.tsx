@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import axios from 'axios'
+import { api } from './api/axios.ts'
 import './index.css'
 import App from './App.tsx'
 import { useAuthStore } from './store/authStore'
@@ -16,14 +16,10 @@ if (oauthToken) {
 // 2. Silent refresh
 if (!oauthToken) {
   try {
-    const { data } = await axios.post(
-      `${import.meta.env.VITE_API_BASE_URL}/auth/refresh`,
-      {},
-      { withCredentials: true }
-    )
+    const { data } = await api.post('/auth/refresh')
     useAuthStore.getState().setToken(data.access_token)
   } catch {
-    // Pass
+    // pass
   }
 }
 

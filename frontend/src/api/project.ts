@@ -1,5 +1,10 @@
 import { api } from './axios'
 
+export interface Project {
+  id: number
+  name: string
+}
+
 export const projectsApi = {
   list: () =>
     api.get('/projects'),
