@@ -2,21 +2,27 @@ import subprocess
 import sys
 import os
 
+from sqlalchemy import text
+
 TESTS = [
     ("S3 Connection",  "test/test_s3.py"),
-    ("Groq Connection", "test/test_groq.py"),
+    # ("Groq Connection", "test/test_groq.py"), # Comment to save token on test
     ("DB Connection",   "test/test_db.py"),
     ("Auth Flow",       "test/test_auth.py"),
     ("Project Flow",    "test/test_projects.py"),
     ("File Flow",       "test/test_files.py"),
     ("Query Flow",      "test/test_query.py"),
+    # ("History Flow",    "test/test_history.py"), # Comment to save token on test
 ]
 
 from app.db.session import engine
 from app.models.base import Base
 
 def reset_db():
-    Base.metadata.drop_all(bind=engine)
+    with engine.connect() as conn:
+        conn.execute(text("DROP SCHEMA public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
+        conn.commit()
     Base.metadata.create_all(bind=engine)
     print("Database reset!")
 

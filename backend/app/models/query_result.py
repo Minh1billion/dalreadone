@@ -9,9 +9,9 @@ class QueryResult(Base):
     __tablename__ = "query_results"
 
     id         = Column(Integer, primary_key=True, index=True)
-    user_id    = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
-    file_id    = Column(Integer, ForeignKey("files.id"), nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    file_id    = Column(Integer, ForeignKey("files.id",    ondelete="CASCADE"), nullable=False)
+    user_id    = Column(Integer, ForeignKey("users.id",    ondelete="CASCADE"), nullable=False, index=True)
     filename   = Column(String, nullable=False)
     question   = Column(String, nullable=True)
     result_json = Column(JSON, nullable=False)

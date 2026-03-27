@@ -1,7 +1,7 @@
 from sqlalchemy import text
 
 from app.db.session import SessionLocal, engine
-from app.models import Base, User, Project, File
+from app.models import Base, User, Project, File, QueryResult
 
 from app.core.config import Config
 
