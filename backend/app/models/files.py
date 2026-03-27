@@ -17,3 +17,4 @@ class File(Base):
 
     uploaded_by = relationship("User", back_populates="files")
     project = relationship("Project", back_populates="files")
+    query_results = relationship("QueryResult", back_populates="file")

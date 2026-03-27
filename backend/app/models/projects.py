@@ -15,3 +15,4 @@ class Project(Base):
 
     created_by = relationship("User", back_populates="projects")
     files = relationship("File", back_populates="project", cascade="all, delete-orphan")
+    query_results = relationship("QueryResult", back_populates="project")

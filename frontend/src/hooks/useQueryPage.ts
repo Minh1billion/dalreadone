@@ -1,11 +1,9 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { useRunQuery } from './useRunQuery'
+import { useQueryHistory } from './useQueryHistory'
 
-/**
- * All stateful logic for QueryPage.
- * Component becomes a pure layout shell.
- */
 export function useQueryPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
@@ -14,10 +12,25 @@ export function useQueryPage() {
   const [activeFileId, setActiveFileId] = useState<number | null>(null)
   const [question, setQuestion] = useState('')
 
-  const query = useRunQuery(pid)
+  const qc = useQueryClient()
+  const { saveNewResult } = useQueryHistory()
+
+  const query = useRunQuery(pid, {
+    onSuccess: (fileId, q, result) => {
+      // Read filename from React Query cache - FilePanel already fetched it
+      const files: any[] = qc.getQueryData(['files', pid]) ?? []
+      const filename = files.find(f => f.id === fileId)?.filename ?? ''
+      saveNewResult({
+        project_id: pid,
+        file_id:    fileId,
+        filename,
+        question:   q || null,
+        result,
+      })
+    },
+  })
 
   function handleSelectFile(id: number) {
-    // Don't reset result — user might want to compare files
     setActiveFileId(id || null)
   }
 
@@ -47,11 +60,10 @@ export function useQueryPage() {
     handleSubmit,
     handleKeyDown,
     handleBack,
-    // query state
-    data: query.data,
-    loading: query.loading,
-    error: query.error,
+    data:       query.data,
+    loading:    query.loading,
+    error:      query.error,
     resultMeta: query.resultMeta,
-    reset: query.reset,
+    reset:      query.reset,
   }
 }

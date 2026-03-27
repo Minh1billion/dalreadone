@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 from pydantic import BaseModel
 
 
@@ -46,3 +47,27 @@ class ProjectResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        
+class QueryResultOut(BaseModel):
+    id:          int
+    project_id:  int
+    file_id:     int
+    filename:    str
+    question:    str | None
+    result_json: dict[str, Any]
+    created_at:  datetime
+ 
+    model_config = {"from_attributes": True}
+ 
+ 
+class QueryResultListItem(BaseModel):
+    """Lightweight item for the history list — no full result_json."""
+    id:         int
+    project_id: int
+    file_id:    int
+    filename:   str
+    question:   str | None
+    insight:    str        # pulled from result_json for preview
+    created_at: datetime
+ 
+    model_config = {"from_attributes": True}
