@@ -44,7 +44,6 @@ _FORBIDDEN_PATTERNS: list[tuple[str, str]] = [
 def _validate_code_safety(code: str) -> str | None:
     for pattern, reason in _FORBIDDEN_PATTERNS:
         for line in code.splitlines():
-            # Bỏ qua comment
             stripped = line.strip()
             if stripped.startswith("#"):
                 continue
@@ -56,40 +55,86 @@ def _validate_code_safety(code: str) -> str | None:
     return None
 
 
+def _coerce_to_list(value) -> list | None:
+    """
+    Convert any list-like (pandas Index, Series, numpy array, plain list)
+    to a plain Python list. Returns None if the value is not list-like.
+    """
+    if isinstance(value, list):
+        # Ensure every element is a plain Python scalar
+        return [v.item() if hasattr(v, "item") else v for v in value]
+    if isinstance(value, (pd.Index, pd.Series, np.ndarray)):
+        return value.tolist()
+    return None
+
+
 def _validate_single_chart(chart: dict) -> dict | None:
     if not isinstance(chart, dict):
         return None
 
     chart_type = chart.get("type")
-    labels = chart.get("labels")
-    data = chart.get("data")
-    title = chart.get("title", "")
+    labels_raw = chart.get("labels")
+    data_raw   = chart.get("data")
+    title      = chart.get("title", "")
 
     if chart_type not in _VALID_CHART_TYPES:
         return None
-    if not isinstance(labels, list) or not isinstance(data, list):
+
+    # Coerce labels to plain list (handles pd.Index, np.ndarray, etc.)
+    labels = _coerce_to_list(labels_raw)
+    if labels is None or len(labels) == 0:
         return None
-    if len(labels) == 0 or len(data) == 0:
+
+    if data_raw is None or (hasattr(data_raw, "__len__") and len(data_raw) == 0):
         return None
 
     if chart_type == "grouped_bar":
         series_labels = chart.get("series_labels")
         if not isinstance(series_labels, list) or len(series_labels) == 0:
             return None
-        for series in data:
-            if not isinstance(series, list):
+        # Coerce each inner series
+        coerced_data = []
+        for series in data_raw:
+            s = _coerce_to_list(series)
+            if s is None:
                 return None
-            if len(series) != len(labels):
+            if len(s) != len(labels):
                 return None
+            coerced_data.append(s)
         return {
             "type": chart_type,
             "title": str(title),
             "labels": labels,
-            "data": data,
+            "data": coerced_data,
             "series_labels": series_labels,
         }
 
-    if len(labels) != len(data):
+    if chart_type == "scatter":
+        # data is list of [x, y] pairs - coerce outer list, keep inner pairs
+        data = _coerce_to_list(data_raw)
+        if data is None:
+            return None
+        coerced_data = []
+        for pair in data:
+            if isinstance(pair, (list, tuple)) and len(pair) == 2:
+                coerced_data.append([
+                    pair[0].item() if hasattr(pair[0], "item") else pair[0],
+                    pair[1].item() if hasattr(pair[1], "item") else pair[1],
+                ])
+            else:
+                return None
+        if len(coerced_data) != len(labels):
+            return None
+        return {
+            "type": chart_type,
+            "title": str(title),
+            "labels": labels,
+            "data": coerced_data,
+        }
+
+    # All other types: data is a flat list of numbers
+    data = _coerce_to_list(data_raw)
+    if data is None or len(data) != len(labels):
         return None
 
     return {
