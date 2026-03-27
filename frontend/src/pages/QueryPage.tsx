@@ -83,7 +83,7 @@ export default function QueryPage() {
         <span className="text-sm font-medium text-gray-900">Query</span>
       </div>
 
-      {/* Split layout — desktop: side by side with drag divider; mobile: stacked */}
+      {/* Split layout - desktop: side by side with drag divider; mobile: stacked */}
       <div
         ref={containerRef}
         className="flex-1 flex overflow-hidden relative"
@@ -113,7 +113,7 @@ export default function QueryPage() {
               <FilePanel
                 projectId={pid}
                 activeFileId={activeFileId}
-                onSelectFile={(id) => { handleSelectFile(id); setMobileLeftOpen(false) }}
+                onSelectFile={handleSelectFile}
               />
             </div>
 
@@ -131,7 +131,7 @@ export default function QueryPage() {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="flex flex-col gap-3 flex-1 min-h-0">
+              <form onSubmit={(e) => { handleSubmit(e); setMobileLeftOpen(false) }} className="flex flex-col gap-3 flex-1 min-h-0">
                 <textarea
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
