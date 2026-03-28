@@ -1,9 +1,22 @@
+import math
+import json
 from sqlalchemy.orm import Session
 
 from app.models.query_result import QueryResult
 from app.models.schemas import QueryResultOut, QueryResultListItem
 
 DEFAULT_LIMIT = 50
+
+
+def _sanitize(obj):
+    """Recursively replace NaN/Inf with None for JSON compatibility."""
+    if isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+        return None
+    if isinstance(obj, dict):
+        return {k: _sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize(v) for v in obj]
+    return obj
 
 
 def save_result(
@@ -22,7 +35,7 @@ def save_result(
         file_id=file_id,
         filename=filename,
         question=question or None,
-        result_json=result_json,
+        result_json=_sanitize(result_json),
     )
     db.add(row)
     db.commit()
@@ -37,7 +50,6 @@ def list_results(
     limit: int = DEFAULT_LIMIT,
     offset: int = 0,
 ) -> list[QueryResult]:
-    """Global history for the user, newest first."""
     return (
         db.query(QueryResult)
         .filter(QueryResult.user_id == user_id)
@@ -73,6 +85,6 @@ def to_list_item(row: QueryResult) -> QueryResultListItem:
         file_id=row.file_id,
         filename=row.filename,
         question=row.question,
-        insight=insight[:160],   # truncate for preview
+        insight=insight[:160],
         created_at=row.created_at,
     )

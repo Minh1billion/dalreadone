@@ -1,50 +1,28 @@
 """
-query_service.py
-
-Main query pipeline. Wires the cost tracker through every LLM call
-and returns a cost_report in the response so callers can measure savings.
-
-Optimisations active in this version:
-  - max_tokens ceiling per stage (in llm_engine.py)
-  - prompt field truncation (in llm_engine.py)
-  - pass-2 skip when pass-1 result is too short (heuristic in llm_engine.py)
-  - tracker records every call OR skip so the full picture is visible
+services/query_service.py
 """
 
-import traceback
-
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
 
-from app.models import File, Project
-from app.storage.s3_client import get_file_bytes
-from app.llm.context_builder import build_dataframe_context
 from app.llm.cost_tracker import CostTracker
-from app.llm.llm_engine import (
-    INTERESTING_MIN_CHARS,
-    generate_code,
-    generate_interesting_code,
-    generate_insights,
-    reprompt_code,
-)
+from app.llm.context_builder import build_dataframe_context
+from app.llm.engine import structured as structured_engine
+from app.llm.engine import nlp as nlp_engine
+from app.llm.insights import generate_insights
 from app.sandbox.code_executor import run_with_retry
+from app.services.file_service import get_file_bytes
 
 
-def _make_reprompt_fn(context: dict, tracker: CostTracker):
-    """
-    Returns a closure used by run_with_retry on each failed exec attempt.
-    The attempt counter in the stage name (reprompt_code#1, #2 ...) lets
-    the tracker show exactly how many retries happened.
-    """
-    attempt_box = [0]
-
-    def reprompt_fn(broken_code: str, error: str) -> str:
-        attempt_box[0] += 1
-        print(f"[REPROMPT attempt {attempt_box[0]}]\nERROR: {error}\nCODE:\n{broken_code}\n")
-        stage = f"reprompt_code#{attempt_box[0]}"
-        return reprompt_code(context, broken_code, error, tracker=tracker, stage=stage)
-
-    return reprompt_fn
+def _run(engine, code, df, context, extra_globals, tracker):
+    """Execute code with retry, using the correct engine for reprompting."""
+    return run_with_retry(
+        code=code,
+        df=df,
+        reprompt_fn=lambda broken, err: engine.reprompt_code(
+            context, broken, err, tracker=tracker
+        ),
+        extra_globals=extra_globals,
+    )
 
 
 def run_query(
@@ -54,120 +32,48 @@ def run_query(
     user_id: int,
     user_question: str = "",
 ) -> dict:
-    """
-    Main query pipeline.
-
-    Pass 1 — multi-angle exploration, returns result + up to 3 charts.
-    Pass 2 — dig into anomalies; skipped when pass-1 result is trivially short.
-
-    Response shape:
-      {
-        user_question        : str | None,
-        explore_reason       : str,
-        result               : str,
-        charts               : list[dict],
-        interesting_reason   : str | None,
-        interesting_result   : str | None,
-        interesting_charts   : list[dict],
-        insight              : str,
-        code                 : str,
-        cost_report          : dict,
-      }
-    """
     tracker = CostTracker()
 
-    try:
-        project = db.query(Project).filter(Project.id == project_id).first()
-        if not project:
-            raise HTTPException(status_code=404, detail="Project not found")
-        if project.user_id != user_id:
-            raise HTTPException(status_code=403, detail="Not authorized")
+    file_bytes, filename = get_file_bytes(db, file_id=file_id, user_id=user_id)
+    context = build_dataframe_context(file_bytes, filename)
+    df      = context["df"]
 
-        record = db.query(File).filter(
-            File.id == file_id,
-            File.project_id == project_id,
-        ).first()
-        if not record:
-            raise HTTPException(status_code=404, detail="File not found")
+    engine       = nlp_engine if context.get("is_nlp") else structured_engine
+    extra_globals = {"nlp_features": context["nlp_features"]} if context.get("is_nlp") else None
+    q            = user_question or ""
 
-        file_bytes = get_file_bytes(record.s3_key)
-        context = build_dataframe_context(file_bytes, record.filename)
+    # Pass-1
+    explore_reason, code       = engine.generate_code(context, user_question=q, tracker=tracker)
+    result_str, charts, code   = _run(engine, code, df, context, extra_globals, tracker)
 
-        # --- Pass 1: standard multi-angle exploration ---
-        explore_reason, code = generate_code(
-            context,
-            user_question=user_question,
-            tracker=tracker,
-        )
+    # Pass-2
+    interesting_reason, i_code = engine.generate_interesting_code(
+        context, explore_reason=explore_reason, result_str=result_str,
+        user_question=q, tracker=tracker,
+    )
+    i_result, i_charts, _      = _run(engine, i_code, df, context, extra_globals, tracker) \
+                                  if i_code else (None, [], None)
 
-        result_str, charts, final_code = run_with_retry(
-            code=code,
-            df=context["df"],
-            reprompt_fn=_make_reprompt_fn(context, tracker),
-        )
+    # Insight
+    insight = generate_insights(
+        filename=filename,
+        explore_reason=explore_reason,
+        result=result_str,
+        user_question=q,
+        interesting_reason=interesting_reason or "",
+        interesting_result=i_result or "",
+        tracker=tracker,
+    )
 
-        # --- Pass 2: anomaly / interesting findings ---
-        interesting_reason      = ""
-        interesting_result_str  = ""
-        interesting_charts: list[dict] = []
-
-        int_reason, int_code = generate_interesting_code(
-            context=context,
-            explore_reason=explore_reason,
-            result_str=result_str,
-            user_question=user_question,
-            tracker=tracker,
-        )
-
-        if not int_reason and not int_code:
-            tracker.record_skip(
-                stage="find_interesting",
-                reason=f"pass-1 result too short ({len(result_str)} < {INTERESTING_MIN_CHARS} chars)",
-            )
-        else:
-            try:
-                is_empty = int_code.strip() in ("result = {}", "result={}")
-                if not is_empty:
-                    interesting_result_str, interesting_charts, _ = run_with_retry(
-                        code=int_code,
-                        df=context["df"],
-                        reprompt_fn=_make_reprompt_fn(context, tracker),
-                    )
-                    interesting_reason = int_reason
-            except Exception:
-                traceback.print_exc()
-
-        # --- Insights: combine both passes into plain-text ---
-        insight = generate_insights(
-            filename=record.filename,
-            explore_reason=explore_reason,
-            result=result_str,
-            user_question=user_question,
-            interesting_reason=interesting_reason,
-            interesting_result=interesting_result_str,
-            tracker=tracker,
-        )
-
-        sep = "=" * 60
-        print(f"\n{sep}")
-        print(tracker.summary())
-        print(f"{sep}\n")
-
-        return {
-            "user_question":       user_question or None,
-            "explore_reason":      explore_reason,
-            "result":              result_str,
-            "charts":              charts,
-            "interesting_reason":  interesting_reason or None,
-            "interesting_result":  interesting_result_str or None,
-            "interesting_charts":  interesting_charts,
-            "insight":             insight,
-            "code":                final_code,
-            "cost_report":         tracker.report(),
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+    return {
+        "user_question":      q or None,
+        "explore_reason":     explore_reason,
+        "result":             result_str,
+        "charts":             charts,
+        "interesting_reason": interesting_reason or None,
+        "interesting_result": i_result,
+        "interesting_charts": i_charts,
+        "insight":            insight,
+        "code":               code,
+        "cost_report":        tracker.report(),
+    }

@@ -1,34 +1,49 @@
-import pandas as pd
+"""
+context_builder.py
+
+Single entry point for building an LLM context dict from raw file bytes.
+
+Responsibilities:
+    1. Load the file into a DataFrame (CSV or Excel)
+    2. Detect whether the data is text-heavy (text_detector)
+    3. Delegate to the appropriate strategy (StructuredStrategy / NLPStrategy)
+
+Nothing else. All schema/stats/feature logic lives in the strategy classes.
+"""
+
 import io
+import pandas as pd
+
+from app.llm.text_detector import is_text_heavy
+from app.llm.strategies import StructuredStrategy, NLPStrategy
+
 
 def build_dataframe_context(file_bytes: bytes, filename: str) -> dict:
+    """
+    Load a CSV or Excel file and return a context dict for the LLM prompt.
+
+    The returned dict always contains at minimum:
+        filename, schema, sample_rows, stats, df, is_nlp
+
+    NLP contexts additionally contain:
+        nlp_features, text_cols
+
+    Args:
+        file_bytes : Raw file content.
+        filename   : Original filename — used to infer format and shown to LLM.
+
+    Returns:
+        Context dict consumed by engine/structured.py or engine/nlp.py.
+    """
+    df = _load_df(file_bytes, filename)
+    heavy, text_cols = is_text_heavy(df)
+    strategy = NLPStrategy(text_cols) if heavy else StructuredStrategy()
+    return strategy.build(df, filename)
+
+
+def _load_df(file_bytes: bytes, filename: str) -> pd.DataFrame:
+    """Parse raw bytes into a DataFrame based on file extension."""
+    buf = io.BytesIO(file_bytes)
     if filename.endswith(".csv"):
-        df = pd.read_csv(io.BytesIO(file_bytes))
-    else:
-        df = pd.read_excel(io.BytesIO(file_bytes))
-
-    schema_lines = [f"- {col} ({dtype})" for col, dtype in zip(df.columns, df.dtypes)]
-
-    stats_lines = []
-    for col in df.columns:
-        null_count = df[col].isna().sum()
-        if pd.api.types.is_numeric_dtype(df[col]):
-            stats_lines.append(
-                f"- {col}: min={df[col].min()}, max={df[col].max()}, "
-                f"mean={df[col].mean():.2f}, nulls={null_count}"
-            )
-        else:
-            # guard against all-null columns before calling value_counts()
-            if df[col].notna().any():
-                top = df[col].value_counts().index[0]
-            else:
-                top = "N/A"
-            stats_lines.append(f"- {col}: top_value={top}, nulls={null_count}")
-
-    return {
-        "filename": filename,
-        "schema": "\n".join(schema_lines),
-        "sample_rows": df.head(5).to_markdown(index=False),
-        "stats": "\n".join(stats_lines),
-        "df": df,
-    }
+        return pd.read_csv(buf)
+    return pd.read_excel(buf)
