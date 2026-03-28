@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.models.base import Base
 
@@ -13,7 +13,7 @@ class File(Base):
     s3_key = Column(String, unique=True, nullable=False)
     uploaded_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
-    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    uploaded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     uploaded_by = relationship("User", back_populates="files")
     project = relationship("Project", back_populates="files")
