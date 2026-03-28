@@ -11,7 +11,10 @@ CSV_PATH = os.path.join(os.path.dirname(__file__), "data.csv")
 # Set FAST_TEST=1 to skip all LLM-heavy tests
 FAST_TEST = os.environ.get("FAST_TEST", "0") == "1"
 
-_VALID_CHART_TYPES = {"bar", "line", "pie", "scatter", "histogram", "grouped_bar"}
+_VALID_CHART_TYPES = {
+    "bar", "line", "pie", "scatter", "histogram", "grouped_bar",
+    "wordcloud_data", "sentiment_distribution", "top_phrases",
+}
 
 # ---------------------------------------------------------------------------
 # Random question pool — drawn from the actual CSV columns:
@@ -217,15 +220,30 @@ def assert_base_fields(data: dict):
 
 def assert_chart(chart):
     assert isinstance(chart, dict)
-    assert chart["type"] in _VALID_CHART_TYPES, f"Invalid chart type: {chart['type']}"
+    
+    if chart["type"] == "wordcloud_data":
+        assert "items" in chart
+        assert all("word" in i and "weight" in i for i in chart["items"])
+        return
+    if chart["type"] == "sentiment_distribution":
+        assert all(k in chart for k in ("positive", "negative", "neutral"))
+        return
+    if chart["type"] == "top_phrases":
+        assert isinstance(chart["labels"], list)
+        assert isinstance(chart["data"], list)
+        return
+
+    valid_types = _VALID_CHART_TYPES | {"wordcloud_data", "sentiment_distribution", "top_phrases"}
+    assert chart["type"] in valid_types, f"Invalid chart type: {chart['type']}"
     assert isinstance(chart["labels"], list) and len(chart["labels"]) > 0
     assert isinstance(chart["data"], list)
+
     if chart["type"] == "grouped_bar":
         assert "series_labels" in chart
         for series in chart["data"]:
             assert isinstance(series, list)
             assert len(series) == len(chart["labels"])
-    else:
+    elif chart["type"] != "scatter":
         assert len(chart["labels"]) == len(chart["data"])
 
 
