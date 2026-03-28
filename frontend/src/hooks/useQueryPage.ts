@@ -17,8 +17,16 @@ export function useQueryPage() {
 
   const query = useRunQuery(pid, {
     onSuccess: (fileId, q, result) => {
-      // Read filename from React Query cache - FilePanel already fetched it
-      const files: any[] = qc.getQueryData(['files', pid]) ?? []
+      // Normalize cache data
+      const raw = qc.getQueryData(['files', pid])
+      const files: any[] = Array.isArray(raw)
+        ? raw
+        : Array.isArray((raw as any)?.data)
+          ? (raw as any).data
+          : Array.isArray((raw as any)?.files)
+            ? (raw as any).files
+            : []
+
       const filename = files.find(f => f.id === fileId)?.filename ?? ''
       saveNewResult({
         project_id: pid,

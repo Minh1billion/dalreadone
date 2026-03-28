@@ -6,7 +6,7 @@ export function useProjects() {
     queryKey: ['projects'],
     queryFn: async () => {
       const { data } = await projectsApi.list()
-      return data
+      return Array.isArray(data) ? data : []
     },
   })
 }

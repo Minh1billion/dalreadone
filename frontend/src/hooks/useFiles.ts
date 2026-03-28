@@ -4,9 +4,14 @@ import { filesApi } from '../api/files'
 export function useFiles(projectId: number) {
   return useQuery({
     queryKey: ['files', projectId],
+    enabled: !!projectId,
     queryFn: async () => {
       const { data } = await filesApi.list(projectId)
-      return data
+      // Normalize: array thẳng
+      if (Array.isArray(data)) return data
+      if (Array.isArray(data?.data))  return data.data
+      if (Array.isArray(data?.files)) return data.files
+      return []
     },
   })
 }
