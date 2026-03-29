@@ -1,13 +1,3 @@
-"""
-engine/base.py
-
-Core LLM invocation layer.
-Handles model instantiation, prompt loading, rate-limit retries,
-token tracking, and prompt-field truncation.
-
-All higher-level engine modules (structured, nlp) build on top of this.
-"""
-
 import re
 import time
 from pathlib import Path
@@ -19,13 +9,8 @@ from langchain_core.prompts import PromptTemplate
 from app.core.config import Config
 from app.llm.cost_tracker import CostTracker
 
-
-# Template directory
 TEMPLATE_DIR = Path(__file__).parent.parent / "template"
 
-
-# Per-stage token budgets
-# Keeps costs predictable; raise only if output quality suffers.
 STAGE_MAX_TOKENS: dict[str, int] = {
     "generate_code":          900,
     "generate_code_nlp":      900,
@@ -35,53 +20,37 @@ STAGE_MAX_TOKENS: dict[str, int] = {
     "generate_insights":      500,
 }
 
-
-# Prompt field truncation limits (characters)
 MAX_SCHEMA_CHARS      = 3_000
 MAX_SAMPLE_ROWS_CHARS = 2_000
 MAX_STATS_CHARS       = 2_000
 MAX_RESULT_CHARS      = 4_000
-
-
-# Pass-2 skip heuristic
-# If pass-1 result is shorter than this, skip find_interesting entirely.
 INTERESTING_MIN_CHARS = 200
 
-
-# Rate-limit retry config
 _RATE_LIMIT_MAX_RETRIES = 4
-_RATE_LIMIT_BASE_DELAY  = 1.0       # seconds, doubles each attempt
+_RATE_LIMIT_BASE_DELAY  = 1.0
 _MAX_WAIT_SECONDS       = 30.0
 _RETRY_AFTER_RE = re.compile(r"try again in (\d+)m([\d.]+)s", re.IGNORECASE)
 
 
-
-# Internal helpers
-def _make_llm(stage: str) -> ChatGroq:
-    """Instantiate a ChatGroq model with the token budget for this stage."""
-    base_stage = stage.split("#")[0]   # strip retry suffix e.g. "reprompt_code#1"
+def _make_llm(stage: str, api_key: str = None) -> ChatGroq:
+    base_stage = stage.split("#")[0]
     return ChatGroq(
         model=Config.MODEL_ID,
-        api_key=Config.GROQ_API_KEY,
+        api_key=api_key or Config.GROQ_API_KEY,
         temperature=0.2,
         max_tokens=STAGE_MAX_TOKENS.get(base_stage, 900),
     )
-
 
 def _load_template(filename: str) -> PromptTemplate:
     text = (TEMPLATE_DIR / filename).read_text()
     return PromptTemplate.from_template(text)
 
-
 def truncate(text: str, max_chars: int) -> str:
-    """Hard-truncate a string and append a notice if truncation occurred."""
     if len(text) <= max_chars:
         return text
     return text[:max_chars] + f"\n... [truncated to {max_chars} chars]"
 
-
 def _extract_token_counts(response) -> tuple[int, int]:
-    """Extract (prompt_tokens, completion_tokens) from a LangChain response."""
     meta = getattr(response, "usage_metadata", None)
     if isinstance(meta, dict):
         inp = meta.get("input_tokens", 0)
@@ -97,21 +66,14 @@ def _extract_token_counts(response) -> tuple[int, int]:
         if inp or out:
             return int(inp), int(out)
 
-    # Fallback: estimate from character count
     out_chars = len(getattr(response, "content", "") or "")
     return 0, max(1, out_chars // 4)
 
-
 def _parse_retry_after(message: str) -> float | None:
-    """Parse 'try again in Xm Y.Zs' from a rate-limit error message."""
     m = _RETRY_AFTER_RE.search(message)
     if m:
         return int(m.group(1)) * 60 + float(m.group(2))
     return None
-
-
-
-# Public invocation API
 
 
 def invoke_with_retry(
@@ -120,12 +82,6 @@ def invoke_with_retry(
     stage: str,
     tracker: Optional[CostTracker] = None,
 ) -> str:
-    """
-    Invoke a LangChain chain with automatic rate-limit retries.
-
-    Exponential back-off up to _MAX_WAIT_SECONDS.
-    Raises immediately if the suggested wait exceeds the cap.
-    """
     delay = _RATE_LIMIT_BASE_DELAY
 
     for attempt in range(1, _RATE_LIMIT_MAX_RETRIES + 1):
@@ -179,24 +135,15 @@ def invoke(
     variables: dict,
     stage: str,
     tracker: Optional[CostTracker] = None,
+    api_key: str = None,
 ) -> str:
-    """Load a template, build the chain, and invoke with retry."""
     prompt = _load_template(template_file)
-    llm    = _make_llm(stage)
+    llm    = _make_llm(stage, api_key=api_key)
     chain  = prompt | llm
     return invoke_with_retry(chain, variables, stage=stage, tracker=tracker)
 
 
 def parse_code_response(raw: str) -> tuple[str, str]:
-    """
-    Parse the LLM response into (explore_reason, code).
-
-    Expected format:
-        EXPLORE: <one-line reason>
-        ```python
-        <code>
-        ```
-    """
     explore_reason = ""
     code_lines     = []
     in_code_block  = False

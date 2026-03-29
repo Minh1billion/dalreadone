@@ -5,6 +5,7 @@ import AppLayout from './components/layout/AppLayout'
 import LoginPage from './pages/LoginPage'
 import ProjectsPage from './pages/ProjectsPage'
 import QueryPage from './pages/QueryPage'
+import SettingsPage from './pages/SettingsPage'
 
 const queryClient = new QueryClient()
 
@@ -26,7 +27,7 @@ export default function App() {
           }>
             <Route path="/" element={<ProjectsPage />} />
             <Route path="/projects/:projectId" element={<QueryPage />} />
-            <Route path="/settings" element={<div className="p-8 text-gray-500">Settings coming soon</div>} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

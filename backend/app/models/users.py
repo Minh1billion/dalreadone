@@ -17,3 +17,4 @@ class User(Base):
     projects = relationship("Project", back_populates="created_by")
     files = relationship("File", back_populates="uploaded_by")
     query_results = relationship("QueryResult", back_populates="user")
+    settings = relationship("UserSettings", back_populates="user", uselist=False)

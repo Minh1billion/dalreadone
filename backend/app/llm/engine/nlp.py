@@ -1,37 +1,14 @@
-"""
-engine/nlp.py
-
-LLM call wrappers for the NLP (text-heavy) pipeline.
-
-Pre-computed features from nlp_features.py are serialized into a
-compact human-readable string before being injected into the prompt,
-so the LLM can reference real numbers instead of guessing.
-"""
-
 from typing import Optional
 
 from app.llm.cost_tracker import CostTracker
 from app.llm.engine.base import (
-    invoke,
-    parse_code_response,
-    truncate,
-    MAX_SCHEMA_CHARS,
-    MAX_SAMPLE_ROWS_CHARS,
-    MAX_STATS_CHARS,
-    MAX_RESULT_CHARS,
-    INTERESTING_MIN_CHARS,
+    invoke, parse_code_response, truncate,
+    MAX_SCHEMA_CHARS, MAX_SAMPLE_ROWS_CHARS, MAX_STATS_CHARS,
+    MAX_RESULT_CHARS, INTERESTING_MIN_CHARS,
 )
 
 
-# Feature serializer
 def _format_nlp_features(nlp_features: dict) -> str:
-    """
-    Serialize pre-computed NLP features into a compact,
-    human-readable block for inclusion in the LLM prompt.
-
-    Keeps only the top-10 keywords and top-3 keywords per cluster
-    to avoid bloating the prompt.
-    """
     lines = []
     for col, feats in nlp_features.items():
         sent    = feats["sentiment"]
@@ -57,19 +34,12 @@ def _format_nlp_features(nlp_features: dict) -> str:
     return "\n\n".join(lines)
 
 
-
-# Public API
 def generate_code(
     context: dict,
     user_question: str = "",
     tracker: Optional[CostTracker] = None,
+    api_key: str = None,
 ) -> tuple[str, str]:
-    """
-    Pass-1: generate exploratory analysis code for a text-heavy dataset.
-
-    Returns:
-        (explore_reason, python_code)
-    """
     raw = invoke(
         "generate_code_nlp.txt",
         {
@@ -85,6 +55,7 @@ def generate_code(
         },
         stage="generate_code_nlp",
         tracker=tracker,
+        api_key=api_key,
     )
     return parse_code_response(raw)
 
@@ -95,14 +66,8 @@ def generate_interesting_code(
     result_str: str,
     user_question: str = "",
     tracker: Optional[CostTracker] = None,
+    api_key: str = None,
 ) -> tuple[str, str]:
-    """
-    Pass-2: generate code to surface anomalies in a text-heavy dataset.
-    Returns ("", "") if pass-1 result is too short to be worth a second pass.
-
-    Returns:
-        (interesting_reason, python_code)
-    """
     if len(result_str) < INTERESTING_MIN_CHARS:
         return "", ""
 
@@ -121,6 +86,7 @@ def generate_interesting_code(
         },
         stage="find_interesting_nlp",
         tracker=tracker,
+        api_key=api_key,
     )
     return parse_code_response(raw)
 
@@ -131,14 +97,7 @@ def reprompt_code(
     error: str,
     tracker: Optional[CostTracker] = None,
     stage: str = "reprompt_code",
+    api_key: str = None,
 ) -> str:
-    """
-    Ask the LLM to fix broken code from the NLP pipeline.
-    Reuses the same fix_code.txt template as the structured pipeline
-    since the repair task is identical.
-
-    Returns:
-        Fixed python_code string.
-    """
     from app.llm.engine.structured import reprompt_code as _reprompt
-    return _reprompt(context, broken_code, error, tracker=tracker, stage=stage)
+    return _reprompt(context, broken_code, error, tracker=tracker, stage=stage, api_key=api_key)

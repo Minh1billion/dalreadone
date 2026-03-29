@@ -1,7 +1,3 @@
-"""
-services/query_service.py
-"""
-
 from sqlalchemy.orm import Session
 
 from app.llm.cost_tracker import CostTracker

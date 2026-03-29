@@ -1,23 +1,10 @@
-"""
-engine/structured.py
-
-LLM call wrappers for the structured (tabular/numeric) pipeline.
-All prompt variables are truncated before being sent to keep
-token usage within budget.
-"""
-
 from typing import Optional
 
 from app.llm.cost_tracker import CostTracker
 from app.llm.engine.base import (
-    invoke,
-    parse_code_response,
-    truncate,
-    MAX_SCHEMA_CHARS,
-    MAX_SAMPLE_ROWS_CHARS,
-    MAX_STATS_CHARS,
-    MAX_RESULT_CHARS,
-    INTERESTING_MIN_CHARS,
+    invoke, parse_code_response, truncate,
+    MAX_SCHEMA_CHARS, MAX_SAMPLE_ROWS_CHARS, MAX_STATS_CHARS,
+    MAX_RESULT_CHARS, INTERESTING_MIN_CHARS,
 )
 
 
@@ -25,13 +12,8 @@ def generate_code(
     context: dict,
     user_question: str = "",
     tracker: Optional[CostTracker] = None,
+    api_key: str = None,
 ) -> tuple[str, str]:
-    """
-    Pass-1: generate exploratory analysis code for a structured dataset.
-
-    Returns:
-        (explore_reason, python_code)
-    """
     raw = invoke(
         "generate_code.txt",
         {
@@ -43,6 +25,7 @@ def generate_code(
         },
         stage="generate_code",
         tracker=tracker,
+        api_key=api_key,
     )
     return parse_code_response(raw)
 
@@ -53,14 +36,8 @@ def generate_interesting_code(
     result_str: str,
     user_question: str = "",
     tracker: Optional[CostTracker] = None,
+    api_key: str = None,
 ) -> tuple[str, str]:
-    """
-    Pass-2: generate code to dig into anomalies or interesting findings.
-    Returns ("", "") if pass-1 result is too short to be worth a second pass.
-
-    Returns:
-        (interesting_reason, python_code)
-    """
     if len(result_str) < INTERESTING_MIN_CHARS:
         return "", ""
 
@@ -75,6 +52,7 @@ def generate_interesting_code(
         },
         stage="find_interesting",
         tracker=tracker,
+        api_key=api_key,
     )
     return parse_code_response(raw)
 
@@ -85,13 +63,8 @@ def reprompt_code(
     error: str,
     tracker: Optional[CostTracker] = None,
     stage: str = "reprompt_code",
+    api_key: str = None,
 ) -> str:
-    """
-    Ask the LLM to fix broken code after a failed sandbox execution.
-
-    Returns:
-        Fixed python_code string (no explore_reason needed here).
-    """
     raw = invoke(
         "fix_code.txt",
         {
@@ -102,7 +75,7 @@ def reprompt_code(
         },
         stage=stage,
         tracker=tracker,
+        api_key=api_key,
     )
-    # Reuse parse_code_response by prefixing a dummy EXPLORE line
     _, code = parse_code_response(f"EXPLORE: fix\n{raw}")
     return code
