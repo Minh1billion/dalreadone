@@ -1,21 +1,3 @@
-"""
-strategies/features.py
-
-Pre-computed NLP feature extractors that run server-side before any LLM call.
-
-Intentionally uses only stdlib + pandas + numpy — no spacy, transformers,
-or nltk — so there are no extra dependencies and results stay fast and
-deterministic.
-
-Features computed per text column:
-    sentiment           : lexicon-based scores with simple negation handling
-    keywords            : TF-IDF approximation (no sklearn)
-    topic_clusters      : keyword co-occurrence grouping
-    length_distribution : word-count buckets (short / medium / long / very_long)
-
-Entry point:
-    compute_nlp_features(df, text_cols) -> dict[col_name, feature_dict]
-"""
 import re
 import math
 import collections
@@ -26,13 +8,33 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+TOP_KEYWORDS    = 15
+TOP_BIGRAMS     = 10
+MIN_DOC_FREQ    = 2
+MIN_WORD_LEN    = 3
+N_CLUSTERS      = 4
+MIN_COOCCURRENCE = 2
 
-# ---------------------------------------------------------------------------
-# Sentinel — returned when a column fails so the rest of the pipeline
-# always sees a fully-formed dict with every expected key.
-# ---------------------------------------------------------------------------
+_POSITIVE_WORDS = {
+    "good", "great", "excellent", "amazing", "wonderful", "fantastic",
+    "love", "loved", "best", "perfect", "awesome", "outstanding",
+    "happy", "pleased", "satisfied", "recommend", "helpful", "easy",
+    "fast", "clean", "friendly", "beautiful", "enjoy", "enjoyed",
+    "impressive", "reliable", "delicious", "fresh", "comfortable",
+}
+
+_NEGATIVE_WORDS = {
+    "bad", "worst", "terrible", "awful", "horrible", "poor", "hate",
+    "hated", "disappointed", "disappointing", "slow", "dirty", "rude",
+    "broken", "useless", "waste", "boring", "cheap", "wrong", "never",
+    "problem", "issue", "error", "fail", "failed", "avoid", "refund",
+    "unfortunately", "annoying", "difficult", "expensive", "missing",
+}
+
+_NEGATORS = {"not", "never", "no", "neither", "nor", "without"}
+
+
 def _empty_features(n_rows: int) -> dict:
-    """Return a fully-formed feature dict with safe zero values."""
     return {
         "sentiment": {
             "scores":       [0.0] * n_rows,
@@ -52,73 +54,17 @@ def _empty_features(n_rows: int) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# Sentiment lexicon
-# Covers common review / feedback / support language.
-# Extend these sets to improve accuracy for your domain.
-# ---------------------------------------------------------------------------
-_POSITIVE_WORDS = {
-    "good", "great", "excellent", "amazing", "wonderful", "fantastic",
-    "love", "loved", "best", "perfect", "awesome", "outstanding",
-    "happy", "pleased", "satisfied", "recommend", "helpful", "easy",
-    "fast", "clean", "friendly", "beautiful", "enjoy", "enjoyed",
-    "impressive", "reliable", "delicious", "fresh", "comfortable",
-}
-
-_NEGATIVE_WORDS = {
-    "bad", "worst", "terrible", "awful", "horrible", "poor", "hate",
-    "hated", "disappointed", "disappointing", "slow", "dirty", "rude",
-    "broken", "useless", "waste", "boring", "cheap", "wrong", "never",
-    "problem", "issue", "error", "fail", "failed", "avoid", "refund",
-    "unfortunately", "annoying", "difficult", "expensive", "missing",
-}
-
-# Words that flip the polarity of the next sentiment word
-_NEGATORS = {"not", "never", "no", "neither", "nor", "without"}
-
-
-# ---------------------------------------------------------------------------
-# TF-IDF / tokenizer config
-# ---------------------------------------------------------------------------
-TOP_KEYWORDS    = 15    # number of keywords to extract per column
-TOP_BIGRAMS     = 10    # number of bigrams to include in stats
-MIN_DOC_FREQ    = 2     # minimum document frequency for a word to qualify
-MIN_WORD_LEN    = 3     # minimum token length (filters noise)
-
-
-# ---------------------------------------------------------------------------
-# Topic clustering config
-# ---------------------------------------------------------------------------
-N_CLUSTERS       = 4   # maximum number of topic clusters to return
-MIN_COOCCURRENCE = 2   # minimum co-occurrence count to link two keywords
-
-
-# ---------------------------------------------------------------------------
-# Tokenizer
-# ---------------------------------------------------------------------------
-def _tokenize(text: str) -> list[str]:
-    """Lowercase, split on non-alpha, filter short tokens."""
+def _tokenize(text: str, stopwords: frozenset[str] = frozenset()) -> list[str]:
     return [
         t for t in re.findall(r"[a-zA-Z]+", text.lower())
-        if len(t) >= MIN_WORD_LEN
+        if len(t) >= MIN_WORD_LEN and t not in stopwords
     ]
 
 
-# ---------------------------------------------------------------------------
-# Sentiment
-# ---------------------------------------------------------------------------
 def _score_row(text: str) -> float:
-    """
-    Score a single text string in [-1, 1].
-
-    Iterates tokens left-to-right; a negator word flips the polarity
-    of the immediately following sentiment word.
-    Score is normalised by token count so longer texts don't dominate.
-    """
     tokens = _tokenize(text)
     score  = 0
     negate = False
-
     for token in tokens:
         if token in _NEGATORS:
             negate = True
@@ -128,21 +74,10 @@ def _score_row(text: str) -> float:
         elif token in _NEGATIVE_WORDS:
             score += 1 if negate else -1
         negate = False
-
     return score / max(len(tokens), 1)
 
 
 def compute_sentiment(series: pd.Series) -> dict:
-    """
-    Compute sentiment statistics for a text column.
-
-    Returns:
-        scores       : list[float]  — one score per row, range [-1, 1]
-        mean         : float
-        positive_pct : float        — % of rows with score > 0
-        negative_pct : float        — % of rows with score < 0
-        neutral_pct  : float        — % of rows with score == 0
-    """
     scores = series.fillna("").astype(str).apply(_score_row).tolist()
     arr    = np.array(scores)
     n      = max(len(arr), 1)
@@ -155,35 +90,24 @@ def compute_sentiment(series: pd.Series) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# TF-IDF keyword extraction
-# ---------------------------------------------------------------------------
-def compute_keywords(series: pd.Series, top_n: int = TOP_KEYWORDS) -> list[tuple[str, float]]:
-    """
-    Approximate TF-IDF keyword extraction without sklearn.
-
-    Aggregates TF-IDF scores across all documents and returns
-    the top_n words sorted by total score descending.
-
-    Returns:
-        list of (word, score) tuples
-    """
+def compute_keywords(
+    series: pd.Series,
+    stopwords: frozenset[str] = frozenset(),
+    top_n: int = TOP_KEYWORDS,
+) -> list[tuple[str, float]]:
     docs   = series.fillna("").astype(str).tolist()
     n_docs = len(docs)
 
     tf_per_doc: list[collections.Counter] = [
-        collections.Counter(_tokenize(doc)) for doc in docs
+        collections.Counter(_tokenize(doc, stopwords)) for doc in docs
     ]
 
-    # Document frequency — how many docs contain each word
     df_counter: collections.Counter = collections.Counter()
     for tf in tf_per_doc:
         df_counter.update(tf.keys())
 
-    # Discard words that appear in too few documents
     vocab = {w for w, cnt in df_counter.items() if cnt >= MIN_DOC_FREQ}
 
-    # Sum TF-IDF scores across all documents
     tfidf_totals: dict[str, float] = collections.defaultdict(float)
     for tf in tf_per_doc:
         total_terms = max(sum(tf.values()), 1)
@@ -197,38 +121,22 @@ def compute_keywords(series: pd.Series, top_n: int = TOP_KEYWORDS) -> list[tuple
     return sorted(tfidf_totals.items(), key=lambda x: x[1], reverse=True)[:top_n]
 
 
-# ---------------------------------------------------------------------------
-# Topic clustering (keyword co-occurrence)
-# ---------------------------------------------------------------------------
 def compute_topic_clusters(
     series: pd.Series,
     keywords: list[str],
+    stopwords: frozenset[str] = frozenset(),
 ) -> list[dict]:
-    """
-    Group keywords into topic clusters using co-occurrence counts.
-
-    Two keywords are linked if they appear together in at least
-    MIN_COOCCURRENCE documents. Clustering is greedy: each keyword
-    joins the cluster of its most co-occurring already-assigned neighbour.
-
-    Returns:
-        list of dicts, each:
-            topic     : str           — label (top keyword in cluster)
-            keywords  : list[str]
-            doc_count : int           — total document coverage
-    """
     if not keywords:
         return []
 
     keyword_set = set(keywords)
     docs        = series.fillna("").astype(str).tolist()
 
-    # Build co-occurrence and per-keyword document counts
     cooc: dict[str, collections.Counter] = {k: collections.Counter() for k in keyword_set}
     doc_counts: collections.Counter      = collections.Counter()
 
     for doc in docs:
-        tokens = set(_tokenize(doc)) & keyword_set
+        tokens = set(_tokenize(doc, stopwords)) & keyword_set
         for kw in tokens:
             doc_counts[kw] += 1
         for kw_a in tokens:
@@ -236,7 +144,6 @@ def compute_topic_clusters(
                 if kw_a != kw_b:
                     cooc[kw_a][kw_b] += 1
 
-    # Greedy assignment
     assigned: dict[str, int] = {}
     clusters: list[list[str]] = []
 
@@ -254,7 +161,6 @@ def compute_topic_clusters(
             assigned[kw] = len(clusters)
             clusters.append([kw])
 
-    # Rank clusters by total document coverage and return top N
     cluster_objs = [
         {
             "topic":     members[0],
@@ -267,22 +173,7 @@ def compute_topic_clusters(
     return cluster_objs[:N_CLUSTERS]
 
 
-# ---------------------------------------------------------------------------
-# Length distribution
-# ---------------------------------------------------------------------------
 def compute_length_distribution(series: pd.Series) -> dict:
-    """
-    Bucket rows by word count into four size categories.
-
-    Thresholds:
-        short     : <= 10 words
-        medium    : 11 – 50 words
-        long      : 51 – 200 words
-        very_long : > 200 words
-
-    Returns:
-        dict with keys short, medium, long, very_long — each a % float.
-    """
     word_counts = series.fillna("").astype(str).apply(lambda x: len(x.split()))
     n = max(len(word_counts), 1)
     return {
@@ -293,47 +184,24 @@ def compute_length_distribution(series: pd.Series) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# Main entry point
-# ---------------------------------------------------------------------------
-def compute_nlp_features(df: pd.DataFrame, text_cols: list[str]) -> dict[str, dict]:
-    """
-    Run all feature extractors for each text column.
-
-    Each column is processed independently inside a try/except so that a
-    failure in one column (e.g. all-null data, unexpected dtypes) never
-    prevents the others from being computed and never propagates a partial
-    dict upward.  A column that fails gets a fully-formed zero-value sentinel
-    so downstream code (engine/nlp.py, the sandbox) can always safely access
-    every expected key without defensive checks.
-
-    Args:
-        df        : Full DataFrame.
-        text_cols : Column names identified as text-heavy.
-
-    Returns:
-        {
-            col_name: {
-                "sentiment"           : { mean, positive_pct, negative_pct, neutral_pct, scores },
-                "keywords"            : [ (word, tfidf_score), ... ],
-                "topic_clusters"      : [ { topic, keywords, doc_count }, ... ],
-                "length_distribution" : { short, medium, long, very_long },
-            }
-        }
-    """
+def compute_nlp_features(
+    df: pd.DataFrame,
+    text_cols: list[str],
+    stopwords: frozenset[str] = frozenset(),
+) -> dict[str, dict]:
     features: dict[str, dict] = {}
 
     for col in text_cols:
         n_rows = len(df)
         try:
             series               = df[col]
-            keywords_with_scores = compute_keywords(series)
+            keywords_with_scores = compute_keywords(series, stopwords)
             keywords             = [w for w, _ in keywords_with_scores]
 
             features[col] = {
                 "sentiment":           compute_sentiment(series),
                 "keywords":            keywords_with_scores,
-                "topic_clusters":      compute_topic_clusters(series, keywords),
+                "topic_clusters":      compute_topic_clusters(series, keywords, stopwords),
                 "length_distribution": compute_length_distribution(series),
             }
 
@@ -346,10 +214,7 @@ def compute_nlp_features(df: pd.DataFrame, text_cols: list[str]) -> dict[str, di
             )
 
         except Exception:
-            logger.exception(
-                "compute_nlp_features failed for col=%r — using zero-value sentinel",
-                col,
-            )
+            logger.exception("compute_nlp_features failed for col=%r — using zero-value sentinel", col)
             features[col] = _empty_features(n_rows)
 
     return features

@@ -5,13 +5,12 @@ import pandas as pd
 from app.llm.strategies.base import ContextStrategy
 from app.llm.strategies.features import compute_nlp_features
 
-SAMPLE_ROWS  = 5
+SAMPLE_ROWS    = 5
 MAX_CELL_CHARS = 200
-TOP_WORDS    = 20
-TOP_BIGRAMS  = 10
-MIN_WORD_LEN = 2
+TOP_WORDS      = 20
+TOP_BIGRAMS    = 10
+MIN_WORD_LEN   = 2
 
-# Default stopwords
 DEFAULT_STOPWORDS = {
     "this", "that", "with", "from", "have", "been", "were", "they",
     "their", "there", "what", "when", "will", "would", "could", "should",
@@ -32,8 +31,8 @@ def resolve_stopwords(config: dict | None) -> frozenset[str]:
 class NLPStrategy(ContextStrategy):
 
     def __init__(self, text_cols: list[str], stopwords_config: dict | None = None) -> None:
-        self._text_cols  = text_cols
-        self._stopwords  = resolve_stopwords(stopwords_config)
+        self._text_cols = text_cols
+        self._stopwords = resolve_stopwords(stopwords_config)
 
     def build(self, df: pd.DataFrame, filename: str) -> dict:
         return {
@@ -41,7 +40,7 @@ class NLPStrategy(ContextStrategy):
             "schema":       self._schema(df),
             "sample_rows":  self._sample_rows(df),
             "stats":        self._stats(df),
-            "nlp_features": compute_nlp_features(df, self._text_cols),
+            "nlp_features": compute_nlp_features(df, self._text_cols, self._stopwords),
             "df":           df,
             "text_cols":    self._text_cols,
             "is_nlp":       True,
@@ -85,7 +84,6 @@ class NLPStrategy(ContextStrategy):
             f"  top_words   : {word_str}\n"
             f"  top_bigrams : {bigram_str}"
         )
-        
 
     def _tokenize(self, text: str) -> list[str]:
         tokens = re.findall(r"[a-zA-Z]+", text.lower())
