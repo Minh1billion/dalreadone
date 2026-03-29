@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy.orm import Session
 
 from app.llm.cost_tracker import CostTracker
@@ -7,30 +9,24 @@ from app.llm.engine import nlp as nlp_engine
 from app.llm.insights import generate_insights
 from app.sandbox.code_executor import run_with_retry
 from app.services.file_service import get_file_bytes
+from app.services import settings_service
+
+logger = logging.getLogger(__name__)
 
 
-def _run(engine, code, df, context, extra_globals, tracker):
+def _run(engine, code, df, context, extra_globals, tracker, api_key=None):
     """Execute code with retry, using the correct engine for reprompting."""
     return run_with_retry(
         code=code,
         df=df,
         reprompt_fn=lambda broken, err: engine.reprompt_code(
-            context, broken, err, tracker=tracker
+            context, broken, err, tracker=tracker, api_key=api_key
         ),
         extra_globals=extra_globals,
     )
 
 
 def _nlp_features_valid(nlp_features: dict) -> bool:
-    """
-    Return True only when every column in nlp_features has a fully-formed
-    sentiment sub-dict (the key accessed most often in LLM-generated code).
-
-    This guards against two failure modes:
-        1. compute_nlp_features raised before building any entry  → empty dict
-        2. A column's sub-extractor failed and returned a partial dict
-           (shouldn't happen after the features.py fix, but cheap to check)
-    """
     if not nlp_features:
         return False
     for col, feats in nlp_features.items():
@@ -52,13 +48,18 @@ def run_query(
 ) -> dict:
     tracker = CostTracker()
 
+    # Resolve API key: user's own key (if enabled) or fall back to system key
+    api_key = settings_service.get_api_key(db, user_id)  # None → use Config key
+
+    logger.info(
+        "run_query file_id=%s user_id=%s using_own_key=%s question=%r",
+        file_id, user_id, api_key is not None, user_question or "(none)",
+    )
+
     file_bytes, filename = get_file_bytes(db, file_id=file_id, user_id=user_id)
     context = build_dataframe_context(file_bytes, filename)
     df      = context["df"]
 
-    # Validate nlp_features before deciding which engine to use.
-    # If the features are missing or malformed we fall back to the structured
-    # engine so the query still succeeds instead of raising a sandbox KeyError.
     raw_nlp_features = context.get("nlp_features", {})
     is_nlp = context.get("is_nlp") and _nlp_features_valid(raw_nlp_features)
 
@@ -66,21 +67,38 @@ def run_query(
     extra_globals = {"nlp_features": raw_nlp_features} if is_nlp else None
     q             = user_question or ""
 
+    logger.info("engine=%s  is_nlp=%s", "nlp" if is_nlp else "structured", is_nlp)
+
     # Pass-1
-    explore_reason, code     = engine.generate_code(context, user_question=q, tracker=tracker)
-    result_str, charts, code = _run(engine, code, df, context, extra_globals, tracker)
+    explore_reason, code = engine.generate_code(
+        context, user_question=q, tracker=tracker, api_key=api_key
+    )
+    logger.debug("pass1 generated code:\n%s", code)
+
+    try:
+        result_str, charts, code = _run(
+            engine, code, df, context, extra_globals, tracker, api_key=api_key
+        )
+    except RuntimeError as exc:
+        logger.error("pass1 failed after all retries:\n%s", exc)
+        raise
 
     # Pass-2
     interesting_reason, i_code = engine.generate_interesting_code(
         context, explore_reason=explore_reason, result_str=result_str,
-        user_question=q, tracker=tracker,
-    )
-    i_result, i_charts, _ = (
-        _run(engine, i_code, df, context, extra_globals, tracker)
-        if i_code else (None, [], None)
+        user_question=q, tracker=tracker, api_key=api_key,
     )
 
-    # Insight — pass schema and chart titles for template compatibility
+    i_result, i_charts = None, []
+    if i_code:
+        logger.debug("pass2 generated code:\n%s", i_code)
+        try:
+            i_result, i_charts, _ = _run(
+                engine, i_code, df, context, extra_globals, tracker, api_key=api_key
+            )
+        except RuntimeError as exc:
+            logger.warning("pass2 failed (non-fatal):\n%s", exc)
+
     insight = generate_insights(
         filename=filename,
         explore_reason=explore_reason,
@@ -89,6 +107,7 @@ def run_query(
         interesting_reason=interesting_reason or "",
         interesting_result=i_result or "",
         tracker=tracker,
+        api_key=api_key,
         schema=context.get("schema", ""),
         existing_chart_titles=", ".join(
             f'"{c["title"]}"' for c in charts if isinstance(c, dict) and "title" in c

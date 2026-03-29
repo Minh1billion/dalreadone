@@ -36,6 +36,7 @@ import itertools
 import functools
 import operator
 import datetime as _datetime
+import traceback as _traceback
 
 import pandas as pd
 import numpy as np
@@ -44,10 +45,7 @@ MAX_RETRIES     = 3
 MAX_RESULT_ROWS = 50
 
 
-# ---------------------------------------------------------------------------
 # Supported chart types
-# ---------------------------------------------------------------------------
-
 # Rendered by Chart.js in ChartCard
 _STANDARD_CHART_TYPES = {
     "bar", "line", "pie", "scatter", "histogram", "grouped_bar",
@@ -63,9 +61,7 @@ _NLP_CHART_TYPES = {
 _VALID_CHART_TYPES = _STANDARD_CHART_TYPES | _NLP_CHART_TYPES
 
 
-# ---------------------------------------------------------------------------
 # Builtins allowlist
-# ---------------------------------------------------------------------------
 _SAFE_BUILTINS = {
     name: getattr(builtins, name)
     for name in (
@@ -84,10 +80,8 @@ _SAFE_BUILTINS = {
 }
 
 
-# ---------------------------------------------------------------------------
 # Pre-injected stdlib modules
 # Available in generated code without import statements.
-# ---------------------------------------------------------------------------
 _STDLIB_MODULES = {
     "re":          re,
     "collections": collections,
@@ -100,9 +94,7 @@ _STDLIB_MODULES = {
 }
 
 
-# ---------------------------------------------------------------------------
 # Static safety checks
-# ---------------------------------------------------------------------------
 _FORBIDDEN_PATTERNS: list[tuple[str, str]] = [
     (r"^\s*import\s+",             "Do not use import statements"),
     (r"^\s*from\s+\w+\s+import",  "Do not use from...import statements"),
@@ -135,9 +127,7 @@ def _validate_code_safety(code: str) -> str | None:
     return None
 
 
-# ---------------------------------------------------------------------------
 # NaN / Inf sanitization
-# ---------------------------------------------------------------------------
 def _sanitize_float(v):
     """
     Convert a single float-like value to a JSON-safe Python float.
@@ -165,9 +155,7 @@ def _sanitize_list(lst: list) -> list:
     return out
 
 
-# ---------------------------------------------------------------------------
 # Result coercion helpers
-# ---------------------------------------------------------------------------
 def _coerce_to_list(value) -> list | None:
     """Convert any list-like to a plain Python list of scalars."""
     if isinstance(value, list):
@@ -185,9 +173,7 @@ def _coerce_scalar(value) -> float | None:
     return raw
 
 
-# ---------------------------------------------------------------------------
 # Chart validators — standard
-# ---------------------------------------------------------------------------
 def _validate_standard_chart(
     chart: dict,
     chart_type: str,
@@ -223,8 +209,28 @@ def _validate_standard_chart(
         for pair in data:
             if not isinstance(pair, (list, tuple)) or len(pair) != 2:
                 return None
-            coerced.append([_coerce_scalar(pair[0]), _coerce_scalar(pair[1])])
-        return {"type": chart_type, "title": title, "labels": labels, "data": coerced}
+            try:
+                x = _coerce_scalar(pair[0])
+                y = _coerce_scalar(pair[1])
+            except (TypeError, ValueError):
+                # Non-numeric axis value (e.g. string category) — drop entire chart
+                return None
+            if x is None or y is None:
+                continue  # skip NaN/Inf points
+            coerced.append([x, y])
+        if not coerced:
+            return None
+        # Pass color_by through so frontend can colour points by group
+        color_by_raw = chart.get("color_by")
+        color_by = (
+            [str(v) for v in color_by_raw]
+            if isinstance(color_by_raw, list) and len(color_by_raw) == len(data)
+            else None
+        )
+        out = {"type": chart_type, "title": title, "labels": labels, "data": coerced}
+        if color_by is not None:
+            out["color_by"] = color_by
+        return out
 
     # bar, line, pie, histogram
     data = _coerce_to_list(data_raw)
@@ -238,9 +244,7 @@ def _validate_standard_chart(
     }
 
 
-# ---------------------------------------------------------------------------
 # Chart validators — NLP
-# ---------------------------------------------------------------------------
 def _validate_nlp_chart(chart: dict, chart_type: str) -> dict | None:
     """
     Validate NLP-specific chart types.
@@ -320,9 +324,7 @@ def _validate_nlp_chart(chart: dict, chart_type: str) -> dict | None:
     return None
 
 
-# ---------------------------------------------------------------------------
 # Chart dispatcher
-# ---------------------------------------------------------------------------
 def _validate_single_chart(chart: dict) -> dict | None:
     """
     Dispatch to the correct validator based on chart type.
@@ -338,12 +340,15 @@ def _validate_single_chart(chart: dict) -> dict | None:
     if chart_type in _NLP_CHART_TYPES:
         return _validate_nlp_chart(chart, chart_type)
 
-    labels_raw = chart.get("labels")
-    data_raw   = chart.get("data")
-    labels     = _coerce_to_list(labels_raw)
-    if labels is None or len(labels) == 0:
-        return None
+    data_raw = chart.get("data")
     if data_raw is None or (hasattr(data_raw, "__len__") and len(data_raw) == 0):
+        return None
+
+    labels_raw = chart.get("labels")
+    labels     = _coerce_to_list(labels_raw) or []
+
+    # Scatter uses x/y pairs — labels are optional and can be empty
+    if chart_type != "scatter" and len(labels) == 0:
         return None
 
     return _validate_standard_chart(chart, chart_type, labels, data_raw)
@@ -368,9 +373,7 @@ def _extract_charts(result: dict) -> list[dict]:
     return validated[:3]
 
 
-# ---------------------------------------------------------------------------
 # Result serialization
-# ---------------------------------------------------------------------------
 def _sanitize_for_markdown(df: pd.DataFrame) -> pd.DataFrame:
     """
     Replace NaN / ±Inf in a DataFrame with None so to_markdown()
@@ -399,9 +402,62 @@ def _serialize_result(result) -> str:
     return str(result)
 
 
-# ---------------------------------------------------------------------------
+# Error enrichment
+def _build_error_message(exc: Exception, code: str) -> str:
+    """
+    Build an error string that includes:
+      - the exception type and message
+      - the line number inside the generated code where it occurred
+      - the actual offending source line
+
+    This gives the reprompt LLM enough context to fix the code without
+    guessing which line is wrong.
+    """
+    tb = _traceback.extract_tb(exc.__traceback__)
+    code_lines = code.splitlines()
+
+    # Walk the traceback frames from innermost outward, find the first frame
+    # whose source is "<string>" (i.e. exec'd code) and whose lineno is valid.
+    offending_line = None
+    lineno         = None
+    for frame in reversed(tb):
+        if frame.filename == "<string>" and frame.lineno is not None:
+            lineno = frame.lineno
+            idx    = lineno - 1
+            if 0 <= idx < len(code_lines):
+                offending_line = code_lines[idx].strip()
+            break
+
+    parts = [f"{type(exc).__name__}: {exc}"]
+    if lineno is not None:
+        parts.append(f"  at line {lineno}: {offending_line or '(unknown)'}")
+
+    # Common fix hints injected directly into the error so the reprompt
+    # template doesn't need to know about every edge case.
+    msg = str(exc)
+    if "indices must be integers or slices, not Series" in msg:
+        parts.append(
+            "Fix: you are using a pandas Series as a list index. "
+            "Use .iloc[int] or convert to a Python int first. "
+            "Example: use `df2.iloc[0]['col']` not `df2[series]['col']`."
+        )
+    elif "observed" in msg:
+        parts.append(
+            "Fix: add observed=True to groupby() to silence FutureWarning "
+            "and avoid phantom NaN groups. "
+            "Example: df.groupby('col', observed=True)['val'].mean()"
+        )
+    elif "not JSON compliant" in msg or "Out of range float" in msg:
+        parts.append(
+            "Fix: your result contains NaN or Inf values. "
+            "Drop or fill them before assigning to result. "
+            "Example: series.fillna(0) or df.dropna()"
+        )
+
+    return "\n".join(parts)
+
+
 # Core exec
-# ---------------------------------------------------------------------------
 def _exec_code(
     code: str,
     df: pd.DataFrame,
@@ -422,9 +478,17 @@ def _exec_code(
     if safety_error:
         return False, "", [], safety_error
 
+    # Subclass DataFrame used inside the sandbox so groupby always defaults
+    # to observed=True — prevents phantom NaN groups (FutureWarning) without
+    # touching the global pd.DataFrame class.
+    class _SandboxDF(pd.DataFrame):
+        def groupby(self, by, **kwargs):
+            kwargs.setdefault("observed", True)
+            return super().groupby(by, **kwargs)
+
     exec_globals: dict = {
         "__builtins__": _SAFE_BUILTINS,
-        "df":           df.copy(),
+        "df":           _SandboxDF(df),
         "pd":           pd,
         "np":           np,
         **_STDLIB_MODULES,
@@ -450,12 +514,10 @@ def _exec_code(
         return True, _serialize_result(result), charts, ""
 
     except Exception as e:
-        return False, "", [], str(e)
+        error_msg = _build_error_message(e, code)
+        return False, "", [], error_msg
 
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
 def run_with_retry(
     code: str,
     df: pd.DataFrame,
