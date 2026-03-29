@@ -23,6 +23,8 @@ export type FilePreview = {
     max: number | null
   }[]
   sample: Record<string, unknown>[]
+  strategy: 'nlp' | 'structured'
+  text_cols: string[]
 }
 
 export const filesApi = {

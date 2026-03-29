@@ -10,6 +10,7 @@ import io
 
 from app.models import File, Project
 from app.storage.s3_client import upload_file, delete_file, get_file_bytes as s3_get_file_bytes
+from app.llm.text_detector import is_text_heavy
 
 
 ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".xls"}
@@ -149,6 +150,9 @@ def get_file_preview(db: Session, file_id: int, user_id: int) -> dict:
 
     # Sample rows 
     sample = df.head(5).replace({np.nan: None}).to_dict(orient="records")
+    
+    
+    heavy, text_cols = is_text_heavy(df)
 
     return {
         "filename":      filename,
@@ -158,4 +162,6 @@ def get_file_preview(db: Session, file_id: int, user_id: int) -> dict:
         "describe":      describe_rows,
         "sample":        sample,
         "dtypes":        {col: str(dtype) for col, dtype in df.dtypes.items()},
+        "strategy":   "nlp" if heavy else "structured",
+        "text_cols":  text_cols,
     }
