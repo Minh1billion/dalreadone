@@ -45,19 +45,22 @@ def run_query(
     file_id: int,
     user_id: int,
     user_question: str = "",
+    stopwords_config: dict | None = None,
 ) -> dict:
-    tracker = CostTracker()
-
-    # Resolve API key: user's own key (if enabled) or fall back to system key
-    api_key = settings_service.get_api_key(db, user_id)  # None → use Config key
+    tracker  = CostTracker()
+    api_key  = settings_service.get_api_key(db, user_id)
 
     logger.info(
-        "run_query file_id=%s user_id=%s using_own_key=%s question=%r",
-        file_id, user_id, api_key is not None, user_question or "(none)",
+        "run_query file_id=%s user_id=%s using_own_key=%s question=%r stopwords=%r",
+        file_id, user_id, api_key is not None, user_question or "(none)", stopwords_config,
     )
 
     file_bytes, filename = get_file_bytes(db, file_id=file_id, user_id=user_id)
-    context = build_dataframe_context(file_bytes, filename)
+    context = build_dataframe_context(
+        file_bytes, filename,
+        stopwords_config=stopwords_config,
+    )
+
     df      = context["df"]
 
     raw_nlp_features = context.get("nlp_features", {})

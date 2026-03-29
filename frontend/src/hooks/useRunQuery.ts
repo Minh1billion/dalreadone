@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { queryApi } from '../api/query'
-import type { QueryResponse } from '../api/query'
+import type { QueryResponse, StopwordsConfig } from '../api/query'
 
 interface UseRunQueryOptions {
   onSuccess?: (fileId: number, question: string, result: QueryResponse) => void
@@ -18,7 +18,7 @@ export function useRunQuery(projectId: number, options?: UseRunQueryOptions) {
 
   const abortRef = useRef<AbortController | null>(null)
 
-  async function run(fileId: number, question: string) {
+  async function run(fileId: number, question: string, stopwords?: StopwordsConfig) {
     abortRef.current?.abort()
     abortRef.current = new AbortController()
 
@@ -26,10 +26,10 @@ export function useRunQuery(projectId: number, options?: UseRunQueryOptions) {
     setError(null)
 
     try {
-      const res = await queryApi.run(projectId, fileId, question)
+      const res = await queryApi.run(projectId, fileId, question, stopwords)
       setData(res.data)
       setResultMeta({ fileId, question })
-      options?.onSuccess?.(fileId, question, res.data)  // notify caller
+      options?.onSuccess?.(fileId, question, res.data)
     } catch (e: any) {
       if (e?.code === 'ERR_CANCELED') return
       setError(e?.response?.data?.detail ?? 'Something went wrong.')

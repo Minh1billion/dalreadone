@@ -5,6 +5,7 @@ import FilePanel from '../components/query/FilePanel'
 import HistoryPanel from '../components/query/HistoryPanel'
 import ResultPanel from '../components/query/ResultPanel'
 import ExportPdfButton from '../components/query/ExportPdfButton'
+import StopwordsEditor from '../components/query/StopwordsEditor'   // ← new
 import { IconBack, IconSend } from '../components/ui/icons'
 import type { QueryResponse } from '../api/query'
 
@@ -20,6 +21,8 @@ export default function QueryPage() {
     activeFileId,
     question,
     setQuestion,
+    stopwords,          // ← new
+    setStopwords,       // ← new
     handleSelectFile,
     handleSubmit: _handleSubmit,
     handleKeyDown,
@@ -32,13 +35,11 @@ export default function QueryPage() {
   const history = useQueryHistory()
 
   // ── History-view state ─────────────────────────────────────────────────────
-  // When user clicks a history item we show that result instead of liveData.
   const [historicalResult, setHistoricalResult] = useState<QueryResponse | null>(null)
   const [historicalMeta, setHistoricalMeta] = useState<{
     id: number; question: string | null; filename: string
   } | null>(null)
 
-  // Active file name for export (kept in sync when user selects a file)
   const [activeFilename, setActiveFilename] = useState('')
 
   const displayData     = historicalResult ?? liveData
@@ -61,7 +62,6 @@ export default function QueryPage() {
     history.setViewingId(null)
   }
 
-  // Re-run: restore file + question from a history item, switch to Files tab, trigger submit
   function handleRerun({ file_id, question: q }: { file_id: number; question: string | null }) {
     clearHistoricalResult()
     handleSelectFile(file_id)
@@ -70,7 +70,6 @@ export default function QueryPage() {
     setMobileLeftOpen(false)
   }
 
-  // When a new live query finishes, clear the historical overlay
   useEffect(() => {
     if (liveData) clearHistoricalResult()
   }, [liveData])
@@ -138,7 +137,6 @@ export default function QueryPage() {
         <span className="text-gray-300">/</span>
         <span className="text-sm font-medium text-gray-900">Query</span>
 
-        {/* Export button — shown when there's a result */}
         {displayData && (
           <div className="ml-auto">
             <ExportPdfButton
@@ -205,19 +203,18 @@ export default function QueryPage() {
                     activeFileId={activeFileId}
                     onSelectFile={(id) => {
                       handleSelectFile(id)
-                      // Capture filename for export
-                      setActiveFilename('')    // reset; FilePanel will update via its own state
+                      setActiveFilename('')
                     }}
                   />
                 </div>
 
-                <div className="flex-1 flex flex-col p-4 min-h-0">
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                <div className="flex-1 flex flex-col p-4 gap-3 min-h-0 overflow-y-auto">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
                     Question
                   </label>
 
                   {!activeFileId && (
-                    <div className="mb-3 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-2">
+                    <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-2">
                       <svg className="flex-none mt-0.5" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                       </svg>
@@ -225,7 +222,7 @@ export default function QueryPage() {
                     </div>
                   )}
 
-                  <form onSubmit={handleSubmit} className="flex flex-col gap-3 flex-1 min-h-0">
+                  <form onSubmit={handleSubmit} className="flex flex-col gap-3">
                     <textarea
                       value={question}
                       onChange={(e) => setQuestion(e.target.value)}
@@ -238,6 +235,14 @@ export default function QueryPage() {
                       rows={5}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-xs placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-shadow resize-none disabled:bg-gray-50 disabled:text-gray-400"
                     />
+
+                    {/* ── Stopwords editor — only when a file is selected ── */}
+                    {activeFileId && (
+                      <StopwordsEditor
+                        value={stopwords}
+                        onChange={setStopwords}
+                      />
+                    )}
 
                     <div className="flex flex-col gap-2">
                       <button
@@ -285,7 +290,6 @@ export default function QueryPage() {
         {/* ── RIGHT PANEL ─────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto min-w-0">
 
-          {/* Historical result banner */}
           {historicalResult && (
             <div className="flex items-center gap-2 px-5 py-2 bg-amber-50 border-b border-amber-100 text-xs text-amber-700">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

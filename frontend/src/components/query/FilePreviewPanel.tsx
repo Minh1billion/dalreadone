@@ -42,7 +42,7 @@ export default function FilePreviewPanel({
 
       {/* ── Header ── */}
       <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center gap-2 flex-wrap">
-        <span className="text-xs font-medium text-gray-700 truncate max-w-[120px]" title={preview.filename}>
+        <span className="text-xs font-medium text-gray-700 truncate max-w-30" title={preview.filename}>
           {preview.filename}
         </span>
         <div className="ml-auto flex items-center gap-1.5 flex-wrap justify-end">
@@ -115,7 +115,7 @@ export default function FilePreviewPanel({
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-gray-400 bg-gray-50">
-                    <th className="text-left px-3 py-1.5 font-medium sticky left-0 bg-gray-50 min-w-[72px]">column</th>
+                    <th className="text-left px-3 py-1.5 font-medium sticky left-0 bg-gray-50 min-w-18">column</th>
                     {(['mean', 'std', 'min', 'median', 'max'] as const).map(h => (
                       <th key={h} className="text-right px-2 py-1.5 font-medium whitespace-nowrap">{h}</th>
                     ))}
@@ -124,7 +124,7 @@ export default function FilePreviewPanel({
                 <tbody className="divide-y divide-gray-50">
                   {describe.map(row => (
                     <tr key={row.column} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-3 py-1.5 font-medium text-gray-700 sticky left-0 bg-white max-w-[72px] truncate" title={row.column}>
+                      <td className="px-3 py-1.5 font-medium text-gray-700 sticky left-0 bg-white max-w-18 truncate" title={row.column}>
                         {row.column}
                       </td>
                       {(['mean', 'std', 'min', 'median', 'max'] as const).map(k => (
@@ -182,7 +182,7 @@ export default function FilePreviewPanel({
               {sample.map((row, i) => (
                 <tr key={i} className="hover:bg-gray-50 transition-colors">
                   {columns.map(col => (
-                    <td key={col} className="px-3 py-1.5 font-mono text-gray-600 max-w-[100px] truncate" title={String(row[col] ?? '')}>
+                    <td key={col} className="px-3 py-1.5 font-mono text-gray-600 max-w-25 truncate" title={String(row[col] ?? '')}>
                       {row[col] == null
                         ? <span className="text-gray-300 italic">null</span>
                         : String(row[col])}

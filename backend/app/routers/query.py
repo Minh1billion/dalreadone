@@ -11,8 +11,14 @@ from app.services import query_result_service
 router = APIRouter(prefix="/projects/{project_id}/files/{file_id}", tags=["query"])
 
 
+class StopwordsConfig(BaseModel):
+    add:      list[str] = []
+    remove:   list[str] = []
+    
+
 class QueryRequest(BaseModel):
-    question: str = ""
+    question:  str = ""
+    stopwords: StopwordsConfig = StopwordsConfig()
 
 
 @router.post("/query")
@@ -37,10 +43,9 @@ def query_file(
             file_id=file_id,
             user_id=current_user.id,
             user_question=body.question,
+            stopwords_config=body.stopwords.model_dump(),
         )
     except RuntimeError as exc:
-        # Code execution failed after all retries — return 422 with detail
-        # so the frontend gets a structured error instead of a raw 500.
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {exc}")

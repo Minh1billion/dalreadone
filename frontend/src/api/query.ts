@@ -73,10 +73,20 @@ export interface QueryResponse {
   cost_report: CostReport
 }
 
+export interface StopwordsConfig {
+  add?:      string[]
+  remove?:   string[]
+}
+
 export const queryApi = {
-  run: (projectId: number, fileId: number, question: string) =>
+  run: (
+    projectId: number,
+    fileId: number,
+    question: string,
+    stopwords?: StopwordsConfig,
+  ) =>
     api.post<QueryResponse>(
       `/projects/${projectId}/files/${fileId}/query`,
-      { question },
+      { question, ...(stopwords ? { stopwords } : {}) },
     ),
 }

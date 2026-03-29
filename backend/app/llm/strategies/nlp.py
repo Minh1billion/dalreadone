@@ -1,19 +1,3 @@
-"""
-strategies/nlp.py
-
-Context builder for text-heavy datasets
-(reviews, comments, articles, transcripts, survey responses, etc.).
-
-Replaces generic tabular stats with NLP-specific metrics:
-    - vocabulary size, avg char/word count per text column
-    - top words and bigrams
-    - pre-computed features: sentiment, TF-IDF keywords, topic clusters,
-      length distribution (via strategies/features.py)
-
-The resulting context dict contains an extra "nlp_features" key that
-the NLP engine (engine/nlp.py) injects into its prompts.
-"""
-
 import re
 import collections
 import pandas as pd
@@ -21,17 +5,14 @@ import pandas as pd
 from app.llm.strategies.base import ContextStrategy
 from app.llm.strategies.features import compute_nlp_features
 
-# Number of sample rows to show in the prompt
-SAMPLE_ROWS = 5
-# Max characters per cell in sample to avoid bloating the prompt
+SAMPLE_ROWS  = 5
 MAX_CELL_CHARS = 200
-# Top N words/bigrams shown in stats (separate from TF-IDF keywords)
-TOP_WORDS   = 20
-TOP_BIGRAMS = 10
-# Minimum token length for stats word counting
-MIN_WORD_LEN = 4
+TOP_WORDS    = 20
+TOP_BIGRAMS  = 10
+MIN_WORD_LEN = 2
 
-_STOPWORDS = {
+# Default stopwords
+DEFAULT_STOPWORDS = {
     "this", "that", "with", "from", "have", "been", "were", "they",
     "their", "there", "what", "when", "will", "would", "could", "should",
     "which", "about", "into", "than", "then", "some", "your", "just",
@@ -39,10 +20,20 @@ _STOPWORDS = {
 }
 
 
+def resolve_stopwords(config: dict | None) -> frozenset[str]:
+    if not config:
+        return frozenset(DEFAULT_STOPWORDS)
+    words = set(DEFAULT_STOPWORDS)
+    words |= {w.lower().strip() for w in config.get("add",    [])}
+    words -= {w.lower().strip() for w in config.get("remove", [])}
+    return frozenset(words)
+
+
 class NLPStrategy(ContextStrategy):
 
-    def __init__(self, text_cols: list[str]) -> None:
-        self._text_cols = text_cols
+    def __init__(self, text_cols: list[str], stopwords_config: dict | None = None) -> None:
+        self._text_cols  = text_cols
+        self._stopwords  = resolve_stopwords(stopwords_config)
 
     def build(self, df: pd.DataFrame, filename: str) -> dict:
         return {
@@ -54,8 +45,8 @@ class NLPStrategy(ContextStrategy):
             "df":           df,
             "text_cols":    self._text_cols,
             "is_nlp":       True,
+            "stopwords":    sorted(self._stopwords),
         }
-    
 
     def _schema(self, df: pd.DataFrame) -> str:
         return "\n".join(
@@ -64,7 +55,6 @@ class NLPStrategy(ContextStrategy):
         )
 
     def _sample_rows(self, df: pd.DataFrame) -> str:
-        """Sample rows with long cells truncated to keep prompts compact."""
         sample = df[self._text_cols].head(SAMPLE_ROWS).copy()
         for col in self._text_cols:
             sample[col] = sample[col].astype(str).str[:MAX_CELL_CHARS]
@@ -95,12 +85,11 @@ class NLPStrategy(ContextStrategy):
             f"  top_words   : {word_str}\n"
             f"  top_bigrams : {bigram_str}"
         )
+        
 
-    
-    # Text utilities
     def _tokenize(self, text: str) -> list[str]:
         tokens = re.findall(r"[a-zA-Z]+", text.lower())
-        return [t for t in tokens if len(t) >= MIN_WORD_LEN and t not in _STOPWORDS]
+        return [t for t in tokens if len(t) >= MIN_WORD_LEN and t not in self._stopwords]
 
     def _avg_word_count(self, series: pd.Series) -> float:
         return series.dropna().astype(str).apply(lambda x: len(x.split())).mean()

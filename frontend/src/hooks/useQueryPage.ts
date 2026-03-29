@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRunQuery } from './useRunQuery'
 import { useQueryHistory } from './useQueryHistory'
+import type { StopwordsConfig } from '../api/query'
 
 export function useQueryPage() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -11,13 +12,13 @@ export function useQueryPage() {
   const pid = Number(projectId)
   const [activeFileId, setActiveFileId] = useState<number | null>(null)
   const [question, setQuestion] = useState('')
+  const [stopwords, setStopwords] = useState<StopwordsConfig>({})
 
   const qc = useQueryClient()
   const { saveNewResult } = useQueryHistory()
 
   const query = useRunQuery(pid, {
     onSuccess: (fileId, q, result) => {
-      // Normalize cache data
       const raw = qc.getQueryData(['files', pid])
       const files: any[] = Array.isArray(raw)
         ? raw
@@ -45,7 +46,7 @@ export function useQueryPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!activeFileId) return
-    await query.run(activeFileId, question)
+    await query.run(activeFileId, question, stopwords)
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -64,6 +65,8 @@ export function useQueryPage() {
     activeFileId,
     question,
     setQuestion,
+    stopwords,
+    setStopwords,
     handleSelectFile,
     handleSubmit,
     handleKeyDown,
