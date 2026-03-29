@@ -1,23 +1,23 @@
 import { api } from './axios'
 
-
 /** Standard Chart.js chart types */
 export interface StandardChart {
   type: 'bar' | 'line' | 'pie' | 'scatter' | 'histogram' | 'grouped_bar'
   title: string
   labels: string[]
   data: number[] | number[][] | [number, number][]
-  series_labels?: string[]   // grouped_bar only
+  series_labels?: string[]  // grouped_bar only
+  color_by?: string[]       // scatter only - one group label per point
 }
 
-/** Word cloud — list of word/weight pairs */
+/** Word cloud - list of word/weight pairs */
 export interface WordCloudChart {
   type: 'wordcloud_data'
   title: string
   items: { word: string; weight: number }[]
 }
 
-/** Sentiment donut — pos/neg/neu percentages */
+/** Sentiment donut - pos/neg/neu percentages */
 export interface SentimentDistributionChart {
   type: 'sentiment_distribution'
   title: string
@@ -26,7 +26,7 @@ export interface SentimentDistributionChart {
   neutral: number
 }
 
-/** Top phrases — horizontal bar of bigrams/keywords */
+/** Top phrases - horizontal bar of bigrams/keywords */
 export interface TopPhrasesChart {
   type: 'top_phrases'
   title: string
@@ -39,7 +39,6 @@ export type Chart =
   | WordCloudChart
   | SentimentDistributionChart
   | TopPhrasesChart
-
 
 export interface CostCall {
   stage: string
@@ -61,7 +60,6 @@ export interface CostReport {
   calls: CostCall[]
 }
 
-
 export interface QueryResponse {
   user_question: string | null
   explore_reason: string
@@ -74,7 +72,6 @@ export interface QueryResponse {
   code: string
   cost_report: CostReport
 }
-
 
 export const queryApi = {
   run: (projectId: number, fileId: number, question: string) =>

@@ -48,6 +48,26 @@ function withAlpha(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
+// ── Scatter helpers ───────────────────────────────────────────────────────────
+
+/**
+ * Maximum points to render per group in a scatter chart.
+ * Beyond this threshold points overlap so densely that individual colours
+ * become indistinguishable. We sample evenly within each group so every
+ * group is represented proportionally.
+ */
+const SCATTER_MAX_POINTS_PER_GROUP = 400
+
+/**
+ * Evenly sample `n` indices from an array of length `len`.
+ * Uses a deterministic stride so repeated renders are stable.
+ */
+function sampleIndices(len: number, n: number): number[] {
+  if (len <= n) return Array.from({ length: len }, (_, i) => i)
+  const stride = len / n
+  return Array.from({ length: n }, (_, i) => Math.floor(i * stride))
+}
+
 // ── Shared card wrapper ───────────────────────────────────────────────────────
 
 function ChartWrapper({ title, children }: { title: string; children: React.ReactNode }) {
@@ -69,9 +89,9 @@ function StandardChartCard({ chart }: { chart: StandardChart }) {
     if (!canvasRef.current) return
     instanceRef.current?.destroy()
 
-    const ctx     = canvasRef.current.getContext('2d')!
-    const { type, labels, data, series_labels, title } = chart
-    const PALETTE = getPalette(title)
+    const ctx                              = canvasRef.current.getContext('2d')!
+    const { type, labels, data, series_labels, color_by, title } = chart
+    const PALETTE                          = getPalette(title)
 
     let datasets: any[]
 
@@ -84,16 +104,68 @@ function StandardChartCard({ chart }: { chart: StandardChart }) {
         borderWidth:     1,
         borderRadius:    3,
       }))
+
     } else if (type === 'scatter') {
-      const points = (data as [number, number][]).map(([x, y]) => ({ x, y }))
-      datasets = [{
-        label:           title,
-        data:            points,
-        backgroundColor: withAlpha(PALETTE[0], 0.65),
-        borderColor:     PALETTE[0],
-        pointRadius:     5,
-        pointHoverRadius: 7,
-      }]
+      const allPoints = (data as [number, number][]).map(([x, y]) => ({ x, y }))
+
+      if (color_by && color_by.length === allPoints.length) {
+        // Build a stable color map - each unique group gets a consistent palette color
+        const groups   = [...new Set(color_by)]
+        const colorMap = Object.fromEntries(
+          groups.map((g, i) => [g, PALETTE[i % PALETTE.length]])
+        )
+
+        // Determine opacity based on total point count:
+        // more points → lower opacity so overlapping regions stay readable
+        const totalPoints = allPoints.length
+        const pointAlpha  = totalPoints > 5000 ? 0.25
+                          : totalPoints > 2000 ? 0.35
+                          : totalPoints > 500  ? 0.50
+                          : 0.65
+
+        const pointRadius = totalPoints > 5000 ? 2.5
+                          : totalPoints > 2000 ? 3
+                          : 4
+
+        // Split points into per-group datasets, sampling when the group is too large
+        // to avoid a single-colour blob caused by too many overlapping points.
+        // Paint higher-index groups (visually "on top") last so dominant groups
+        // don't fully obscure minority groups - achieved via `order` (lower = on top).
+        datasets = groups.map((group, gi) => {
+          const groupIndices = allPoints.reduce<number[]>((acc, _, i) => {
+            if (color_by[i] === group) acc.push(i)
+            return acc
+          }, [])
+
+          const sampledIndices = sampleIndices(groupIndices.length, SCATTER_MAX_POINTS_PER_GROUP)
+          const sampledPoints  = sampledIndices.map(si => allPoints[groupIndices[si]])
+
+          const color = colorMap[group]
+          return {
+            label:            group,
+            data:             sampledPoints,
+            backgroundColor:  withAlpha(color, pointAlpha),
+            borderColor:      withAlpha(color, Math.min(pointAlpha + 0.2, 1)),
+            pointRadius,
+            pointHoverRadius: pointRadius + 2,
+            // Lower order = drawn on top; paint minority groups last so they're visible
+            order:            groups.length - gi,
+          }
+        })
+      } else {
+        // Fallback - no color dimension, single dataset with sampling
+        const sampledIndices = sampleIndices(allPoints.length, SCATTER_MAX_POINTS_PER_GROUP * 3)
+        const sampledPoints  = sampledIndices.map(i => allPoints[i])
+        datasets = [{
+          label:            title,
+          data:             sampledPoints,
+          backgroundColor:  withAlpha(PALETTE[0], 0.45),
+          borderColor:      PALETTE[0],
+          pointRadius:      3,
+          pointHoverRadius: 5,
+        }]
+      }
+
     } else if (type === 'pie') {
       datasets = [{
         data:            data as number[],
@@ -101,6 +173,7 @@ function StandardChartCard({ chart }: { chart: StandardChart }) {
         borderColor:     PALETTE.slice(0, labels.length),
         borderWidth:     1,
       }]
+
     } else if (type === 'histogram') {
       datasets = [{
         label:           title,
@@ -110,22 +183,24 @@ function StandardChartCard({ chart }: { chart: StandardChart }) {
         borderWidth:     1,
         borderRadius:    2,
       }]
+
     } else if (type === 'line') {
       datasets = [{
-        label:            title,
-        data:             data as number[],
-        backgroundColor:  withAlpha(PALETTE[0], 0.12),
-        borderColor:      PALETTE[0],
-        borderWidth:      2,
-        fill:             true,
-        tension:          0.4,
-        pointRadius:      3,
+        label:                title,
+        data:                 data as number[],
+        backgroundColor:      withAlpha(PALETTE[0], 0.12),
+        borderColor:          PALETTE[0],
+        borderWidth:          2,
+        fill:                 true,
+        tension:              0.4,
+        pointRadius:          3,
         pointBackgroundColor: PALETTE[0],
-        pointBorderColor: '#fff',
-        pointBorderWidth: 1.5,
+        pointBorderColor:     '#fff',
+        pointBorderWidth:     1.5,
       }]
+
     } else {
-      // bar — each bar gets its own palette colour
+      // bar - each bar gets its own palette color
       datasets = [{
         label:           title,
         data:            data as number[],
@@ -138,19 +213,38 @@ function StandardChartCard({ chart }: { chart: StandardChart }) {
 
     const chartType = type === 'histogram' || type === 'grouped_bar' ? 'bar' : type
 
+    // Show legend for chart types where it conveys meaningful information
+    const showLegend = (
+      type === 'grouped_bar' ||
+      type === 'pie'         ||
+      (type === 'scatter' && color_by && color_by.length > 0)
+    )
+
+    // For large scatter charts, append a sampling note to the title tooltip area
+    const isSampledScatter = (
+      type === 'scatter' &&
+      (data as any[]).length > SCATTER_MAX_POINTS_PER_GROUP
+    )
+
     instanceRef.current = new ChartJS(ctx, {
       type: chartType as any,
       data: { labels: type === 'scatter' ? undefined : labels, datasets },
       options: {
-        responsive: true,
+        responsive:          true,
         maintainAspectRatio: true,
         plugins: {
           legend: {
-            display:  type === 'grouped_bar' || type === 'pie',
+            display:  showLegend,
             position: 'bottom',
             labels:   { color: '#6b7280', font: { size: 11 }, boxWidth: 10, padding: 12 },
           },
-          title:   { display: false },
+          title: {
+            display: isSampledScatter,
+            text:    `Showing up to ${SCATTER_MAX_POINTS_PER_GROUP} pts/group (sampled for clarity)`,
+            color:   '#9ca3af',
+            font:    { size: 10, style: 'italic' },
+            padding: { bottom: 4 },
+          },
           tooltip: {
             backgroundColor: '#1f2937',
             titleColor:      '#f9fafb',
@@ -194,11 +288,9 @@ function WordCloudCard({ chart }: { chart: WordCloudChart }) {
     <ChartWrapper title={chart.title}>
       <div className="flex flex-wrap gap-2 justify-center py-2">
         {chart.items.map((item, i) => {
-          // Scale font size between 11px and 28px based on relative weight
           const size    = 11 + Math.round((item.weight / max) * 17)
           const color   = COLORS[i % COLORS.length]
           const opacity = 0.55 + (item.weight / max) * 0.45
-
           return (
             <span
               key={item.word}
@@ -226,7 +318,6 @@ function SentimentDistributionCard({ chart }: { chart: SentimentDistributionChar
 
   return (
     <ChartWrapper title={chart.title}>
-      {/* Stacked bar */}
       <div className="flex h-6 rounded-full overflow-hidden mb-4">
         {segments.map(s =>
           s.value > 0 ? (
@@ -238,8 +329,6 @@ function SentimentDistributionCard({ chart }: { chart: SentimentDistributionChar
           ) : null
         )}
       </div>
-
-      {/* Legend */}
       <div className="flex justify-around">
         {segments.map(s => (
           <div key={s.label} className={`flex flex-col items-center px-3 py-2 rounded-lg ${s.bg}`}>

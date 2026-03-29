@@ -9,10 +9,11 @@ from app.llm.engine.base import (
 
 
 def _format_nlp_features(nlp_features: dict) -> str:
+    """Serialize pre-computed NLP features into a compact prompt-friendly block."""
     lines = []
     for col, feats in nlp_features.items():
-        sent    = feats["sentiment"]
-        kws     = ", ".join(f"{w}({s:.2f})" for w, s in feats["keywords"][:10])
+        sent     = feats["sentiment"]
+        kws      = ", ".join(f"{w}({s:.2f})" for w, s in feats["keywords"][:10])
         clusters = "; ".join(
             f'{c["topic"]}:[{", ".join(c["keywords"][:3])}]'
             for c in feats["topic_clusters"]
@@ -34,6 +35,12 @@ def _format_nlp_features(nlp_features: dict) -> str:
     return "\n\n".join(lines)
 
 
+def _extract_chart_titles(result_str: str) -> list[str]:
+    """Extract chart titles from pass-1 result string to prevent pass-2 duplicates."""
+    import re
+    return re.findall(r'"title"\s*:\s*"([^"]+)"', result_str)
+
+
 def generate_code(
     context: dict,
     user_question: str = "",
@@ -51,7 +58,7 @@ def generate_code(
                                 _format_nlp_features(context.get("nlp_features", {})),
                                 MAX_STATS_CHARS,
                              ),
-            "user_question": user_question or "No specific question — explore freely.",
+            "user_question": user_question or "No specific question - explore freely.",
         },
         stage="generate_code_nlp",
         tracker=tracker,
@@ -71,18 +78,22 @@ def generate_interesting_code(
     if len(result_str) < INTERESTING_MIN_CHARS:
         return "", ""
 
+    existing_titles     = _extract_chart_titles(result_str)
+    existing_titles_str = ", ".join(f'"{t}"' for t in existing_titles) if existing_titles else "none"
+
     raw = invoke(
         "find_interesting_nlp.txt",
         {
-            "filename":       context["filename"],
-            "schema":         truncate(context["schema"],     MAX_SCHEMA_CHARS),
-            "explore_reason": explore_reason,
-            "result":         truncate(result_str,            MAX_RESULT_CHARS),
-            "nlp_features":   truncate(
-                                _format_nlp_features(context.get("nlp_features", {})),
-                                MAX_STATS_CHARS,
-                              ),
-            "user_question":  user_question or "No specific question provided.",
+            "filename":              context["filename"],
+            "schema":                truncate(context["schema"],     MAX_SCHEMA_CHARS),
+            "explore_reason":        explore_reason,
+            "result":                truncate(result_str,            MAX_RESULT_CHARS),
+            "nlp_features":          truncate(
+                                       _format_nlp_features(context.get("nlp_features", {})),
+                                       MAX_STATS_CHARS,
+                                     ),
+            "user_question":         user_question or "No specific question provided.",
+            "existing_chart_titles": existing_titles_str,
         },
         stage="find_interesting_nlp",
         tracker=tracker,

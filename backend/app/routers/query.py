@@ -30,13 +30,20 @@ def query_file(
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
-    response = run_query(
-        db=db,
-        project_id=project_id,
-        file_id=file_id,
-        user_id=current_user.id,
-        user_question=body.question,
-    )
+    try:
+        response = run_query(
+            db=db,
+            project_id=project_id,
+            file_id=file_id,
+            user_id=current_user.id,
+            user_question=body.question,
+        )
+    except RuntimeError as exc:
+        # Code execution failed after all retries — return 422 with detail
+        # so the frontend gets a structured error instead of a raw 500.
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {exc}")
 
     result_dict = response if isinstance(response, dict) else response.model_dump()
 

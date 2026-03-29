@@ -26,6 +26,47 @@ Fix the code. STRICT RULES - violating any of these will cause another failure:
 - All chart `labels` and `data` must be plain Python lists - ALWAYS call .tolist() on any
   pandas Index, pandas Series, or numpy array before assigning to labels or data
 
+---
+
+COMMON ERRORS AND HOW TO FIX THEM:
+
+ERROR: "list indices must be integers or slices, not Series"
+CAUSE: A pandas Series is being used as a list index, e.g. some_list[series_variable]
+FIX:   Never index a plain Python list with a Series. Use integer positions or iterate:
+```python
+# WRONG
+top_texts = df["text"].tolist()
+result["sample"] = top_texts[df["score"].nlargest(3).index]  # Series as index
+
+# CORRECT - use pandas directly
+result["sample"] = df.nlargest(3, "score")[["text", "score"]]
+```
+
+ERROR: "Out of range float values are not JSON compliant" / NaN or Inf in result
+CAUSE: groupby().mean() on empty groups, or division by zero, produces NaN/Inf
+FIX:   Fill or drop NaN before assigning to result:
+```python
+# WRONG
+result["avg"] = df.groupby("cat")["val"].mean()  # may contain NaN groups
+
+# CORRECT
+result["avg"] = df.groupby("cat", observed=True)["val"].mean().dropna()
+```
+
+ERROR: "Code did not assign anything to `result`" or result is empty dict
+CAUSE: Code raised before reaching the result = {{...}} line, or all keys were chart keys
+FIX:   Ensure at least one non-chart key is assigned to result
+
+ERROR: "'str' object has no attribute 'X'" or similar attribute errors on strings
+CAUSE: A column expected to be numeric is actually string type
+FIX:   Convert with pd.to_numeric(..., errors='coerce') before arithmetic
+
+ERROR: KeyError on column name
+CAUSE: Column name has different casing or whitespace than expected
+FIX:   Check schema above and use the exact column name shown there
+
+---
+
 WRONG (will fail again):
 ```python
 import pandas as pd                        # WRONG - never import
@@ -34,6 +75,7 @@ df = pd.read_csv("{filename}")             # WRONG - never read files
 "labels": df["col"].value_counts().index   # WRONG - pandas Index, not a list
 "labels": grouped.index                    # WRONG - pandas Index, not a list
 "data":   df["col"].values                 # WRONG - numpy array, not a list
+some_list[a_series]                        # WRONG - Series as list index
 ```
 
 CORRECT:

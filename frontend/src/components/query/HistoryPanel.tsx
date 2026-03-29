@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, startTransition } from 'react'
 import { useQueryHistory } from '../../hooks/useQueryHistory'
 import type { QueryResponse } from '../../api/query'
 import type { HistoryListItem } from '../../api/history'
@@ -21,24 +21,35 @@ function TimeAgo({ iso }: { iso: string }) {
 }
 
 export default function HistoryPanel({ onSelect, onRerun, activeId }: Props) {
-  const { items, listLoaded, fetchList, fetchDetail, deleteItem } = useQueryHistory()
+  const { items, listLoaded, fetchList, fetchDetail, deleteItem, preloadDetail } = useQueryHistory()
+
   const [loadingId,   setLoadingId]   = useState<number | null>(null)
   const [deletingId,  setDeletingId]  = useState<number | null>(null)
   const [rerunningId, setRerunningId] = useState<number | null>(null)
-  const [error, setError] = useState('')
+  const [error,       setError]       = useState('')
 
+  // Fetch list on mount - preloading all details is handled inside fetchList
   useEffect(() => { fetchList() }, [])
 
   async function handleSelect(item: HistoryListItem) {
     if (loadingId) return
-    setLoadingId(item.id)
+    setLoadingId(item.id)   // show spinner immediately
     setError('')
     try {
       const result = await fetchDetail(item.id)
-      onSelect(result, { id: item.id, question: item.question, filename: item.filename, file_id: item.file_id })
+      // Mark the result render as a non-urgent transition so React keeps
+      // the spinner visible while the heavy ResultPanel renders in the background
+      startTransition(() => {
+        onSelect(result, {
+          id:       item.id,
+          question: item.question,
+          filename: item.filename,
+          file_id:  item.file_id,
+        })
+        setLoadingId(null)  // hide spinner only after render is committed
+      })
     } catch {
       setError('Failed to load result.')
-    } finally {
       setLoadingId(null)
     }
   }
@@ -59,7 +70,9 @@ export default function HistoryPanel({ onSelect, onRerun, activeId }: Props) {
   if (!listLoaded) {
     return (
       <div className="space-y-2 py-2">
-        {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />)}
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+        ))}
       </div>
     )
   }
@@ -76,7 +89,9 @@ export default function HistoryPanel({ onSelect, onRerun, activeId }: Props) {
   return (
     <div className="flex flex-col gap-1">
       {error && (
-        <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded px-2 py-1 mb-1">{error}</p>
+        <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded px-2 py-1 mb-1">
+          {error}
+        </p>
       )}
 
       {items.map((item) => {
@@ -88,22 +103,28 @@ export default function HistoryPanel({ onSelect, onRerun, activeId }: Props) {
         return (
           <div
             key={item.id}
+            // Hover triggers a preload as a secondary safety net for items
+            // not yet cached (e.g. items added after initial list fetch)
+            onMouseEnter={() => preloadDetail(item.id)}
             onClick={() => !isLoading && handleSelect(item)}
             className={`
-              group relative flex flex-col gap-0.5 px-2.5 py-2.5 rounded-lg cursor-pointer transition-colors border
+              group relative flex flex-col gap-0.5 px-2.5 py-2.5 rounded-lg
+              cursor-pointer transition-colors border
               ${isActive   ? 'bg-primary-50 border-primary-200' : 'hover:bg-gray-50 border-transparent'}
               ${isDeleting ? 'opacity-40 pointer-events-none'   : ''}
             `}
           >
-            {/* Filename + time */}
+            {/* Filename + timestamp */}
             <div className="flex items-center justify-between gap-2 min-w-0 pr-5">
               <span className={`text-xs font-medium truncate ${isActive ? 'text-primary-700' : 'text-gray-700'}`}>
                 {item.filename}
               </span>
-              <span className="flex-none text-xs text-gray-400"><TimeAgo iso={item.created_at} /></span>
+              <span className="flex-none text-xs text-gray-400">
+                <TimeAgo iso={item.created_at} />
+              </span>
             </div>
 
-            {/* Question */}
+            {/* Question or auto-explore label */}
             <p className="text-xs text-gray-500 truncate pr-5">
               {item.question
                 ? <span className="italic">"{item.question}"</span>
@@ -112,15 +133,18 @@ export default function HistoryPanel({ onSelect, onRerun, activeId }: Props) {
             </p>
 
             {/* Insight preview */}
-            <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed mt-0.5">{item.insight}</p>
+            <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed mt-0.5">
+              {item.insight}
+            </p>
 
-            {/* Re-run button — only on active item */}
+            {/* Re-run button - only visible on the active (selected) item */}
             {isActive && (
               <button
                 onClick={(e) => handleRerun(e, item)}
                 disabled={isRerunning}
                 className={`
-                  mt-2 flex items-center justify-center gap-1.5 w-full py-1.5 rounded-md text-xs font-medium transition-colors
+                  mt-2 flex items-center justify-center gap-1.5 w-full py-1.5
+                  rounded-md text-xs font-medium transition-colors
                   ${isRerunning
                     ? 'bg-primary-100 text-primary-500 cursor-default'
                     : 'bg-primary-600 hover:bg-primary-700 text-white'
@@ -128,7 +152,10 @@ export default function HistoryPanel({ onSelect, onRerun, activeId }: Props) {
                 `}
               >
                 {isRerunning ? (
-                  <><div className="w-3 h-3 rounded-full border border-primary-400 border-t-transparent animate-spin" />Starting…</>
+                  <>
+                    <div className="w-3 h-3 rounded-full border border-primary-400 border-t-transparent animate-spin" />
+                    Starting…
+                  </>
                 ) : (
                   <>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -141,14 +168,14 @@ export default function HistoryPanel({ onSelect, onRerun, activeId }: Props) {
               </button>
             )}
 
-            {/* Spinner overlay while loading detail */}
+            {/* Loading overlay while fetching or rendering detail */}
             {isLoading && (
               <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-lg">
                 <div className="w-4 h-4 rounded-full border-2 border-primary-500 border-t-transparent animate-spin" />
               </div>
             )}
 
-            {/* Delete on hover — hidden when active to avoid clutter with re-run button */}
+            {/* Delete button - shown on hover, hidden on active item to avoid clutter */}
             {!isActive && (
               <button
                 onClick={(e) => handleDelete(e, item.id)}

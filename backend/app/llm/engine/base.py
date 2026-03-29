@@ -144,22 +144,50 @@ def invoke(
 
 
 def parse_code_response(raw: str) -> tuple[str, str]:
+    """
+    Extract the EXPLORE reason and python code block from a raw LLM response.
+
+    Parsing is intentionally lenient:
+    - Accepts ``` python (with space) as well as ```python
+    - Falls back to treating the entire response as code if no fenced block
+      is found, so a truncated or improperly formatted response still produces
+      a repromptable error instead of crashing the whole pipeline.
+    - Never raises — returns ("", "") if truly nothing useful was found,
+      which run_with_retry treats as an empty-result error and reprompts.
+    """
     explore_reason = ""
-    code_lines     = []
-    in_code_block  = False
+    code_lines: list[str] = []
+    in_code_block = False
+    found_fence   = False
 
     for line in raw.splitlines():
-        if line.startswith("EXPLORE:"):
-            explore_reason = line.replace("EXPLORE:", "").strip()
-        elif line.strip() == "```python":
+        stripped = line.strip()
+
+        if stripped.startswith("EXPLORE:"):
+            explore_reason = stripped.replace("EXPLORE:", "").strip()
+            continue
+
+        # Accept ```python or ``` python
+        if re.match(r"^```\s*python\s*$", stripped, re.IGNORECASE):
             in_code_block = True
-        elif line.strip() == "```" and in_code_block:
+            found_fence   = True
+            continue
+
+        if stripped == "```" and in_code_block:
             in_code_block = False
-        elif in_code_block:
+            continue
+
+        if in_code_block:
             code_lines.append(line)
 
     code = "\n".join(code_lines).strip()
-    if not code:
-        raise ValueError(f"Could not parse code from LLM response:\n{raw}")
+
+    # Fallback: if no fenced block was found but the response looks like code,
+    # use the whole response so the sandbox can attempt execution and produce
+    # a meaningful error message for the reprompt rather than failing silently.
+    if not found_fence and not code:
+        candidate = raw.strip()
+        if "result" in candidate and "=" in candidate:
+            return explore_reason, candidate
 
     return explore_reason, code

@@ -19,14 +19,44 @@ Entry point:
 import re
 import math
 import collections
+import logging
 
 import numpy as np
 import pandas as pd
 
+logger = logging.getLogger(__name__)
 
+
+# ---------------------------------------------------------------------------
+# Sentinel — returned when a column fails so the rest of the pipeline
+# always sees a fully-formed dict with every expected key.
+# ---------------------------------------------------------------------------
+def _empty_features(n_rows: int) -> dict:
+    """Return a fully-formed feature dict with safe zero values."""
+    return {
+        "sentiment": {
+            "scores":       [0.0] * n_rows,
+            "mean":         0.0,
+            "positive_pct": 0.0,
+            "negative_pct": 0.0,
+            "neutral_pct":  100.0,
+        },
+        "keywords":            [],
+        "topic_clusters":      [],
+        "length_distribution": {
+            "short":     100.0,
+            "medium":    0.0,
+            "long":      0.0,
+            "very_long": 0.0,
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
 # Sentiment lexicon
 # Covers common review / feedback / support language.
 # Extend these sets to improve accuracy for your domain.
+# ---------------------------------------------------------------------------
 _POSITIVE_WORDS = {
     "good", "great", "excellent", "amazing", "wonderful", "fantastic",
     "love", "loved", "best", "perfect", "awesome", "outstanding",
@@ -47,22 +77,25 @@ _NEGATIVE_WORDS = {
 _NEGATORS = {"not", "never", "no", "neither", "nor", "without"}
 
 
+# ---------------------------------------------------------------------------
 # TF-IDF / tokenizer config
+# ---------------------------------------------------------------------------
 TOP_KEYWORDS    = 15    # number of keywords to extract per column
 TOP_BIGRAMS     = 10    # number of bigrams to include in stats
 MIN_DOC_FREQ    = 2     # minimum document frequency for a word to qualify
 MIN_WORD_LEN    = 3     # minimum token length (filters noise)
 
 
+# ---------------------------------------------------------------------------
 # Topic clustering config
+# ---------------------------------------------------------------------------
+N_CLUSTERS       = 4   # maximum number of topic clusters to return
+MIN_COOCCURRENCE = 2   # minimum co-occurrence count to link two keywords
 
 
-N_CLUSTERS         = 4  # maximum number of topic clusters to return
-MIN_COOCCURRENCE   = 2  # minimum co-occurrence count to link two keywords
-
-
-
+# ---------------------------------------------------------------------------
 # Tokenizer
+# ---------------------------------------------------------------------------
 def _tokenize(text: str) -> list[str]:
     """Lowercase, split on non-alpha, filter short tokens."""
     return [
@@ -71,8 +104,9 @@ def _tokenize(text: str) -> list[str]:
     ]
 
 
-
+# ---------------------------------------------------------------------------
 # Sentiment
+# ---------------------------------------------------------------------------
 def _score_row(text: str) -> float:
     """
     Score a single text string in [-1, 1].
@@ -121,8 +155,9 @@ def compute_sentiment(series: pd.Series) -> dict:
     }
 
 
-
+# ---------------------------------------------------------------------------
 # TF-IDF keyword extraction
+# ---------------------------------------------------------------------------
 def compute_keywords(series: pd.Series, top_n: int = TOP_KEYWORDS) -> list[tuple[str, float]]:
     """
     Approximate TF-IDF keyword extraction without sklearn.
@@ -162,8 +197,9 @@ def compute_keywords(series: pd.Series, top_n: int = TOP_KEYWORDS) -> list[tuple
     return sorted(tfidf_totals.items(), key=lambda x: x[1], reverse=True)[:top_n]
 
 
-
+# ---------------------------------------------------------------------------
 # Topic clustering (keyword co-occurrence)
+# ---------------------------------------------------------------------------
 def compute_topic_clusters(
     series: pd.Series,
     keywords: list[str],
@@ -231,8 +267,9 @@ def compute_topic_clusters(
     return cluster_objs[:N_CLUSTERS]
 
 
-
+# ---------------------------------------------------------------------------
 # Length distribution
+# ---------------------------------------------------------------------------
 def compute_length_distribution(series: pd.Series) -> dict:
     """
     Bucket rows by word count into four size categories.
@@ -249,18 +286,26 @@ def compute_length_distribution(series: pd.Series) -> dict:
     word_counts = series.fillna("").astype(str).apply(lambda x: len(x.split()))
     n = max(len(word_counts), 1)
     return {
-        "short":     float((word_counts <= 10).sum()                              / n * 100),
-        "medium":    float(((word_counts > 10)  & (word_counts <= 50)).sum()      / n * 100),
-        "long":      float(((word_counts > 50)  & (word_counts <= 200)).sum()     / n * 100),
-        "very_long": float((word_counts > 200).sum()                              / n * 100),
+        "short":     float((word_counts <= 10).sum()                          / n * 100),
+        "medium":    float(((word_counts > 10)  & (word_counts <= 50)).sum()  / n * 100),
+        "long":      float(((word_counts > 50)  & (word_counts <= 200)).sum() / n * 100),
+        "very_long": float((word_counts > 200).sum()                          / n * 100),
     }
 
 
-
+# ---------------------------------------------------------------------------
 # Main entry point
+# ---------------------------------------------------------------------------
 def compute_nlp_features(df: pd.DataFrame, text_cols: list[str]) -> dict[str, dict]:
     """
     Run all feature extractors for each text column.
+
+    Each column is processed independently inside a try/except so that a
+    failure in one column (e.g. all-null data, unexpected dtypes) never
+    prevents the others from being computed and never propagates a partial
+    dict upward.  A column that fails gets a fully-formed zero-value sentinel
+    so downstream code (engine/nlp.py, the sandbox) can always safely access
+    every expected key without defensive checks.
 
     Args:
         df        : Full DataFrame.
@@ -277,14 +322,34 @@ def compute_nlp_features(df: pd.DataFrame, text_cols: list[str]) -> dict[str, di
         }
     """
     features: dict[str, dict] = {}
+
     for col in text_cols:
-        series                = df[col]
-        keywords_with_scores  = compute_keywords(series)
-        keywords              = [w for w, _ in keywords_with_scores]
-        features[col] = {
-            "sentiment":           compute_sentiment(series),
-            "keywords":            keywords_with_scores,
-            "topic_clusters":      compute_topic_clusters(series, keywords),
-            "length_distribution": compute_length_distribution(series),
-        }
+        n_rows = len(df)
+        try:
+            series               = df[col]
+            keywords_with_scores = compute_keywords(series)
+            keywords             = [w for w, _ in keywords_with_scores]
+
+            features[col] = {
+                "sentiment":           compute_sentiment(series),
+                "keywords":            keywords_with_scores,
+                "topic_clusters":      compute_topic_clusters(series, keywords),
+                "length_distribution": compute_length_distribution(series),
+            }
+
+            logger.debug(
+                "nlp_features OK  col=%r  sentiment_mean=%.3f  keywords=%d  clusters=%d",
+                col,
+                features[col]["sentiment"]["mean"],
+                len(features[col]["keywords"]),
+                len(features[col]["topic_clusters"]),
+            )
+
+        except Exception:
+            logger.exception(
+                "compute_nlp_features failed for col=%r — using zero-value sentinel",
+                col,
+            )
+            features[col] = _empty_features(n_rows)
+
     return features

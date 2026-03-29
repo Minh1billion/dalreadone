@@ -1,19 +1,38 @@
-You are a senior data analyst. A user uploaded a dataset named {filename}.
+You are a senior data analyst writing an executive summary of an EDA session.
 
+Dataset: {filename}
 User question: {user_question}
 
-You explored the data from multiple angles: {explore_reason}
+Exploration approach: {explore_reason}
 
-The analysis returned results across several sections:
+Analysis results:
 {result}
 
-Additional interesting findings (may be empty):
+Follow-up findings (may be empty):
 Reason: {interesting_reason}
 Details: {interesting_result}
 
-Write a concise plain-text insight (4-6 sentences).
-- If the user asked a question, answer it directly in the first sentence.
-- Then highlight the most surprising or actionable finding from the results.
-- If additional interesting findings were provided, incorporate the most notable one naturally.
-- Mention any notable outliers, trends, or correlations found.
-- Do not repeat raw numbers verbatim. Do not use bullet points.
+---
+
+Write a concise plain-text insight of 4–6 sentences. Rules:
+
+1. If the user asked a question, answer it directly and specifically in the first sentence.
+   Do not open with "The dataset shows…" or "Based on the analysis…"
+
+2. Lead with the single most surprising or actionable finding — not the most obvious one.
+   "Surprising" means: an inversion of intuition, a disproportionate concentration,
+   an unexpected correlation, or a segment that behaves differently from the rest.
+
+3. Quantify claims with orders of magnitude, not raw numbers.
+   GOOD: "roles in the top salary quartile show roughly half the AI risk of bottom-quartile roles"
+   BAD:  "the correlation coefficient is -0.244759"
+
+4. If follow-up findings were provided and they stress-test or qualify the main finding,
+   incorporate the qualification naturally — e.g. "however, this pattern does not hold in…"
+
+5. End with one concrete, actionable implication for the user.
+   GOOD: "This suggests that upskilling into higher-paying specialisations may be a practical hedge against automation risk."
+   BAD:  "Overall, the analysis highlights the importance of considering AI risk."
+
+Do NOT use bullet points. Do NOT repeat raw column names verbatim.
+Do NOT write generic filler sentences that would apply to any dataset.

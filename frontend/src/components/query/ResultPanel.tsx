@@ -92,23 +92,56 @@ function CodeBlock({ code }: { code: string }) {
   )
 }
 
+/**
+ * Build a fingerprint for a chart to detect near-duplicates across pass-1 and pass-2.
+ *
+ * Two charts are considered duplicates if they share the same:
+ *   - type  (e.g. both "scatter")
+ *   - color_by column identity — compared via the first element of color_by, which
+ *     encodes which column was used to group points. If color_by differs the charts
+ *     visualise a genuinely different dimension even when titles are similar.
+ *   - title (normalised to lowercase, trimmed)
+ *
+ * For non-scatter types the fingerprint is just `type:normalisedTitle` so the
+ * original title-only dedup still applies to bar/line/pie/histogram charts.
+ */
+function chartFingerprint(chart: any): string {
+  const title = (chart.title ?? '').toLowerCase().trim()
+  if (chart.type === 'scatter') {
+    // Use the first color_by value as a proxy for "which column was used"
+    const colorCol = Array.isArray(chart.color_by) && chart.color_by.length > 0
+      ? String(chart.color_by[0])
+      : '__none__'
+    return `scatter:${colorCol}:${title}`
+  }
+  return `${chart.type}:${title}`
+}
+
 interface Props {
   data: QueryResponse
 }
 
 export default function ResultPanel({ data }: Props) {
   const hasInteresting = !!(data.interesting_reason && data.interesting_result)
-  const allCharts = [...data.charts, ...data.interesting_charts]
+
+  // Deduplicate pass-2 charts using a richer fingerprint (type + color_by + title)
+  // instead of title alone, so two scatter charts that use different color dimensions
+  // are correctly treated as distinct, while near-identical ones are still suppressed.
+  const pass1Fingerprints = new Set(data.charts.map(chartFingerprint))
+  const allCharts = [
+    ...data.charts,
+    ...data.interesting_charts.filter(c => !pass1Fingerprints.has(chartFingerprint(c))),
+  ]
 
   return (
     <div className="space-y-3">
 
-      {/* Insight — always on top */}
+      {/* Insight - always on top */}
       <Section label="Insight" badge="AI summary" badgeColor="amber">
         <p className="text-sm text-gray-700 leading-relaxed">{data.insight}</p>
       </Section>
 
-      {/* Charts — merged pass1 + pass2 */}
+      {/* Charts - merged pass-1 + deduplicated pass-2 */}
       {allCharts.length > 0 && (
         <Section label="Charts" badge={`${allCharts.length}`} badgeColor="gray">
           <div className="grid grid-cols-1 gap-4">
@@ -119,7 +152,7 @@ export default function ResultPanel({ data }: Props) {
         </Section>
       )}
 
-      {/* Result — markdown table */}
+      {/* Result - pass-1 raw output */}
       <Section label="Data" badge="Pass 1" badgeColor="gray">
         <div className="space-y-2">
           {data.explore_reason && (
@@ -129,7 +162,7 @@ export default function ResultPanel({ data }: Props) {
         </div>
       </Section>
 
-      {/* Interesting findings */}
+      {/* Interesting findings - pass-2 raw output */}
       {hasInteresting && (
         <Section label="Interesting findings" badge="Pass 2" badgeColor="purple" defaultOpen={false}>
           <div className="space-y-2">
@@ -141,7 +174,7 @@ export default function ResultPanel({ data }: Props) {
         </Section>
       )}
 
-      {/* Code */}
+      {/* Generated code */}
       <Section label="Generated code" badge="Python" badgeColor="gray" defaultOpen={false}>
         <CodeBlock code={data.code} />
       </Section>
@@ -149,12 +182,11 @@ export default function ResultPanel({ data }: Props) {
       {/* Cost report */}
       <Section label="Cost report" badgeColor="gray" defaultOpen={false}>
         <div className="space-y-3">
-          {/* Summary row */}
           <div className="grid grid-cols-3 gap-3">
             {[
               { label: 'Total tokens', value: data.cost_report.total_tokens.toLocaleString() },
-              { label: 'Cost (USD)', value: `$${data.cost_report.total_cost_usd.toFixed(5)}` },
-              { label: 'Latency', value: `${data.cost_report.total_latency_ms}ms` },
+              { label: 'Cost (USD)',   value: `$${data.cost_report.total_cost_usd.toFixed(5)}` },
+              { label: 'Latency',      value: `${data.cost_report.total_latency_ms}ms` },
             ].map(({ label, value }) => (
               <div key={label} className="bg-gray-50 rounded-lg p-3 text-center">
                 <p className="text-xs text-gray-400">{label}</p>
@@ -163,7 +195,6 @@ export default function ResultPanel({ data }: Props) {
             ))}
           </div>
 
-          {/* Per-stage table */}
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
@@ -183,7 +214,7 @@ export default function ResultPanel({ data }: Props) {
                     </td>
                     {call.skipped ? (
                       <td colSpan={4} className="py-1.5 text-gray-300 text-right italic">
-                        skipped — {call.skip_reason}
+                        skipped - {call.skip_reason}
                       </td>
                     ) : (
                       <>

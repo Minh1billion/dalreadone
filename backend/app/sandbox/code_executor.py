@@ -44,8 +44,9 @@ MAX_RETRIES     = 3
 MAX_RESULT_ROWS = 50
 
 
+# ---------------------------------------------------------------------------
 # Supported chart types
-
+# ---------------------------------------------------------------------------
 
 # Rendered by Chart.js in ChartCard
 _STANDARD_CHART_TYPES = {
@@ -62,7 +63,9 @@ _NLP_CHART_TYPES = {
 _VALID_CHART_TYPES = _STANDARD_CHART_TYPES | _NLP_CHART_TYPES
 
 
+# ---------------------------------------------------------------------------
 # Builtins allowlist
+# ---------------------------------------------------------------------------
 _SAFE_BUILTINS = {
     name: getattr(builtins, name)
     for name in (
@@ -81,8 +84,10 @@ _SAFE_BUILTINS = {
 }
 
 
+# ---------------------------------------------------------------------------
 # Pre-injected stdlib modules
 # Available in generated code without import statements.
+# ---------------------------------------------------------------------------
 _STDLIB_MODULES = {
     "re":          re,
     "collections": collections,
@@ -95,7 +100,9 @@ _STDLIB_MODULES = {
 }
 
 
+# ---------------------------------------------------------------------------
 # Static safety checks
+# ---------------------------------------------------------------------------
 _FORBIDDEN_PATTERNS: list[tuple[str, str]] = [
     (r"^\s*import\s+",             "Do not use import statements"),
     (r"^\s*from\s+\w+\s+import",  "Do not use from...import statements"),
@@ -128,7 +135,39 @@ def _validate_code_safety(code: str) -> str | None:
     return None
 
 
+# ---------------------------------------------------------------------------
+# NaN / Inf sanitization
+# ---------------------------------------------------------------------------
+def _sanitize_float(v):
+    """
+    Convert a single float-like value to a JSON-safe Python float.
+    NaN  → None
+    ±Inf → None
+    """
+    if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+        return None
+    if hasattr(v, "item"):          # numpy scalar
+        f = float(v.item())
+        if math.isnan(f) or math.isinf(f):
+            return None
+        return f
+    return v
+
+
+def _sanitize_list(lst: list) -> list:
+    """Recursively sanitize every element of a flat or nested list."""
+    out = []
+    for item in lst:
+        if isinstance(item, list):
+            out.append(_sanitize_list(item))
+        else:
+            out.append(_sanitize_float(item))
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Result coercion helpers
+# ---------------------------------------------------------------------------
 def _coerce_to_list(value) -> list | None:
     """Convert any list-like to a plain Python list of scalars."""
     if isinstance(value, list):
@@ -138,12 +177,17 @@ def _coerce_to_list(value) -> list | None:
     return None
 
 
-def _coerce_scalar(value) -> float:
-    """Coerce a numpy scalar or plain number to Python float."""
-    return float(value.item() if hasattr(value, "item") else value)
+def _coerce_scalar(value) -> float | None:
+    """Coerce a numpy scalar or plain number to JSON-safe Python float."""
+    raw = float(value.item() if hasattr(value, "item") else value)
+    if math.isnan(raw) or math.isinf(raw):
+        return None
+    return raw
 
 
+# ---------------------------------------------------------------------------
 # Chart validators — standard
+# ---------------------------------------------------------------------------
 def _validate_standard_chart(
     chart: dict,
     chart_type: str,
@@ -162,7 +206,7 @@ def _validate_standard_chart(
             s = _coerce_to_list(series)
             if s is None or len(s) != len(labels):
                 return None
-            coerced_data.append(s)
+            coerced_data.append(_sanitize_list(s))
         return {
             "type":          chart_type,
             "title":         title,
@@ -180,17 +224,23 @@ def _validate_standard_chart(
             if not isinstance(pair, (list, tuple)) or len(pair) != 2:
                 return None
             coerced.append([_coerce_scalar(pair[0]), _coerce_scalar(pair[1])])
-            
         return {"type": chart_type, "title": title, "labels": labels, "data": coerced}
 
     # bar, line, pie, histogram
     data = _coerce_to_list(data_raw)
     if data is None or len(data) != len(labels):
         return None
-    return {"type": chart_type, "title": title, "labels": labels, "data": data}
+    return {
+        "type":   chart_type,
+        "title":  title,
+        "labels": labels,
+        "data":   _sanitize_list(data),
+    }
 
 
+# ---------------------------------------------------------------------------
 # Chart validators — NLP
+# ---------------------------------------------------------------------------
 def _validate_nlp_chart(chart: dict, chart_type: str) -> dict | None:
     """
     Validate NLP-specific chart types.
@@ -228,7 +278,12 @@ def _validate_nlp_chart(chart: dict, chart_type: str) -> dict | None:
             weight = item.get("weight")
             if not isinstance(word, str) or weight is None:
                 return None
-            coerced.append({"word": word, "weight": _coerce_scalar(weight)})
+            safe_weight = _coerce_scalar(weight)
+            if safe_weight is None:
+                continue            # skip words with NaN/Inf weight
+            coerced.append({"word": word, "weight": safe_weight})
+        if not coerced:
+            return None
         return {"type": chart_type, "title": title, "items": coerced}
 
     if chart_type == "sentiment_distribution":
@@ -237,12 +292,17 @@ def _validate_nlp_chart(chart: dict, chart_type: str) -> dict | None:
         neu = chart.get("neutral")
         if any(v is None for v in (pos, neg, neu)):
             return None
+        safe_pos = _coerce_scalar(pos)
+        safe_neg = _coerce_scalar(neg)
+        safe_neu = _coerce_scalar(neu)
+        if any(v is None for v in (safe_pos, safe_neg, safe_neu)):
+            return None
         return {
             "type":     chart_type,
             "title":    title,
-            "positive": _coerce_scalar(pos),
-            "negative": _coerce_scalar(neg),
-            "neutral":  _coerce_scalar(neu),
+            "positive": safe_pos,
+            "negative": safe_neg,
+            "neutral":  safe_neu,
         }
 
     if chart_type == "top_phrases":
@@ -250,12 +310,19 @@ def _validate_nlp_chart(chart: dict, chart_type: str) -> dict | None:
         data   = _coerce_to_list(chart.get("data"))
         if not labels or not data or len(labels) != len(data):
             return None
-        return {"type": chart_type, "title": title, "labels": labels, "data": data}
+        return {
+            "type":   chart_type,
+            "title":  title,
+            "labels": labels,
+            "data":   _sanitize_list(data),
+        }
 
     return None
 
 
+# ---------------------------------------------------------------------------
 # Chart dispatcher
+# ---------------------------------------------------------------------------
 def _validate_single_chart(chart: dict) -> dict | None:
     """
     Dispatch to the correct validator based on chart type.
@@ -301,28 +368,40 @@ def _extract_charts(result: dict) -> list[dict]:
     return validated[:3]
 
 
+# ---------------------------------------------------------------------------
 # Result serialization
+# ---------------------------------------------------------------------------
+def _sanitize_for_markdown(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Replace NaN / ±Inf in a DataFrame with None so to_markdown()
+    produces clean output without non-JSON floats leaking through.
+    """
+    return df.where(pd.notnull(df), other=None)
+
+
 def _serialize_result(result) -> str:
     if isinstance(result, dict):
         sections = []
         for key, val in result.items():
             if isinstance(val, pd.DataFrame):
-                rendered = val.head(MAX_RESULT_ROWS).to_markdown(index=True)
+                rendered = _sanitize_for_markdown(val.head(MAX_RESULT_ROWS)).to_markdown(index=True)
             elif isinstance(val, pd.Series):
-                rendered = val.head(MAX_RESULT_ROWS).to_string()
+                rendered = val.head(MAX_RESULT_ROWS).fillna("").to_string()
             else:
                 rendered = str(val)
             sections.append(f"[{key}]\n{rendered}")
         return "\n\n".join(sections)
 
     if isinstance(result, pd.DataFrame):
-        return result.head(MAX_RESULT_ROWS).to_markdown(index=True)
+        return _sanitize_for_markdown(result.head(MAX_RESULT_ROWS)).to_markdown(index=True)
     if isinstance(result, pd.Series):
-        return result.head(MAX_RESULT_ROWS).to_string()
+        return result.head(MAX_RESULT_ROWS).fillna("").to_string()
     return str(result)
 
 
+# ---------------------------------------------------------------------------
 # Core exec
+# ---------------------------------------------------------------------------
 def _exec_code(
     code: str,
     df: pd.DataFrame,
@@ -374,6 +453,9 @@ def _exec_code(
         return False, "", [], str(e)
 
 
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
 def run_with_retry(
     code: str,
     df: pd.DataFrame,

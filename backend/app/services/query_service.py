@@ -21,6 +21,28 @@ def _run(engine, code, df, context, extra_globals, tracker):
     )
 
 
+def _nlp_features_valid(nlp_features: dict) -> bool:
+    """
+    Return True only when every column in nlp_features has a fully-formed
+    sentiment sub-dict (the key accessed most often in LLM-generated code).
+
+    This guards against two failure modes:
+        1. compute_nlp_features raised before building any entry  → empty dict
+        2. A column's sub-extractor failed and returned a partial dict
+           (shouldn't happen after the features.py fix, but cheap to check)
+    """
+    if not nlp_features:
+        return False
+    for col, feats in nlp_features.items():
+        sent = feats.get("sentiment")
+        if not isinstance(sent, dict):
+            return False
+        for key in ("scores", "mean", "positive_pct", "negative_pct", "neutral_pct"):
+            if key not in sent:
+                return False
+    return True
+
+
 def run_query(
     db: Session,
     project_id: int,
@@ -34,23 +56,31 @@ def run_query(
     context = build_dataframe_context(file_bytes, filename)
     df      = context["df"]
 
-    engine       = nlp_engine if context.get("is_nlp") else structured_engine
-    extra_globals = {"nlp_features": context["nlp_features"]} if context.get("is_nlp") else None
-    q            = user_question or ""
+    # Validate nlp_features before deciding which engine to use.
+    # If the features are missing or malformed we fall back to the structured
+    # engine so the query still succeeds instead of raising a sandbox KeyError.
+    raw_nlp_features = context.get("nlp_features", {})
+    is_nlp = context.get("is_nlp") and _nlp_features_valid(raw_nlp_features)
+
+    engine        = nlp_engine if is_nlp else structured_engine
+    extra_globals = {"nlp_features": raw_nlp_features} if is_nlp else None
+    q             = user_question or ""
 
     # Pass-1
-    explore_reason, code       = engine.generate_code(context, user_question=q, tracker=tracker)
-    result_str, charts, code   = _run(engine, code, df, context, extra_globals, tracker)
+    explore_reason, code     = engine.generate_code(context, user_question=q, tracker=tracker)
+    result_str, charts, code = _run(engine, code, df, context, extra_globals, tracker)
 
     # Pass-2
     interesting_reason, i_code = engine.generate_interesting_code(
         context, explore_reason=explore_reason, result_str=result_str,
         user_question=q, tracker=tracker,
     )
-    i_result, i_charts, _      = _run(engine, i_code, df, context, extra_globals, tracker) \
-                                  if i_code else (None, [], None)
+    i_result, i_charts, _ = (
+        _run(engine, i_code, df, context, extra_globals, tracker)
+        if i_code else (None, [], None)
+    )
 
-    # Insight
+    # Insight — pass schema and chart titles for template compatibility
     insight = generate_insights(
         filename=filename,
         explore_reason=explore_reason,
@@ -59,6 +89,10 @@ def run_query(
         interesting_reason=interesting_reason or "",
         interesting_result=i_result or "",
         tracker=tracker,
+        schema=context.get("schema", ""),
+        existing_chart_titles=", ".join(
+            f'"{c["title"]}"' for c in charts if isinstance(c, dict) and "title" in c
+        ),
     )
 
     return {

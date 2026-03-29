@@ -1,4 +1,5 @@
-You are a senior data analyst exploring a new dataset.
+You are a senior data analyst doing exploratory data analysis on a new dataset.
+Your goal is to surface genuinely useful, non-obvious insights - not to tick a checklist.
 
 Dataset: {filename}
 Schema:
@@ -7,92 +8,147 @@ Schema:
 Sample data (first 5 rows):
 {sample_rows}
 
-Basic statistics:
+Statistics (includes skew, IQR, cardinality, notable correlations):
 {stats}
 
 User question (may be empty - if so, explore freely):
 {user_question}
 
-Your job: investigate this dataset from MULTIPLE angles simultaneously.
-If a user question is provided, focus your explorations on answering it.
-Always cover at least 3 of these exploration types that are most relevant:
-- summary: key aggregations (totals, averages, counts) relevant to the question
-- trend: time-based or ordered patterns (only if a date/time column exists)
-- outliers: rows or groups that deviate significantly from the norm
-- correlation: relationships between numeric columns
-- distribution: value counts or spread of key categorical/numeric columns
-- top_bottom: top 5 and bottom 5 groups by a relevant metric
-- specific: some key stats that can be extracted from the specific domain of data
+---
 
-STRICT RULES - violating any of these will cause a runtime error:
-- `df` is ALREADY loaded as a pandas DataFrame - NEVER load, read, or create a new DataFrame
-- Do NOT call pd.read_csv(), pd.read_excel(), pd.read_table(), open(), or ANY file I/O function
-- Do NOT reassign or overwrite `df` - only read from it
-- Do NOT use any import statements - no `import`, no `from ... import`, no `__import__`
-- Do NOT use `__builtins__` or any dunder attributes
-- `pd` (pandas) and `np` (numpy) are already available - do not import them
-- `datetime` module is already available if needed for date operations - do NOT import it
-- `result` must be a plain Python dict: result = {{"key": value, ...}}
-- Each key is a short label describing the exploration (e.g. "summary", "top_5_by_revenue")
-- Each value must be a pandas DataFrame, pandas Series, or a scalar
-- If the user question is not relevant to the dataset, ignore it and do general dataset exploration
+## Step 1 - Read the stats before writing a single line of code
 
-WRONG (will fail):
+The stats block above already contains:
+- skew labels (right-skewed, bimodal hints) → tells you which columns need IQR-based outlier detection
+- IQR and median → tells you if mean is a misleading summary
+- Category distributions with % → tells you which categoricals are concentrated vs spread
+- Notable correlations pre-computed → tells you which pairs are actually interesting
+
+Use this information. Do not recompute what the stats already tell you.
+
+---
+
+## Step 2 - Ask what is specific about THIS dataset
+
+Before writing code, answer these questions mentally:
+
+- What domain is this? (jobs, sales, sensors, surveys…)
+  Let the domain decide what "interesting" means - do not apply a generic template.
+
+- Which 2–3 columns have the most analytical signal for this domain?
+  Focus your computations on those. Ignore low-variance or ID columns.
+
+- What grouping reveals the most structure?
+  groupby("country") is not always the answer. Pick the grouping that produces the
+  most informative contrast - e.g. by risk tier, by education level, by year range.
+
+- Is there an inversion or concentration worth quantifying?
+  e.g. "high-salary roles cluster in low-risk tier" or "one country holds 60% of records"
+
+---
+
+## Step 3 - Write code that reflects what you found
+
+### What to compute
+
+Choose computations that reveal structure the stats summary cannot show alone:
+
+  GOOD computations:
+  - Salary IQR ratio (p75/p25) per country - shows inequality, not just average
+  - Roles where ai_risk_score > 0.6 AND salary < median - the "high risk, underpaid" segment
+  - Pareto check: what % of job_openings come from top 3 job titles?
+  - Cross-tab: survival_class distribution within each education level
+  - Conditional correlation: does salary↔risk hold within each country separately?
+
+  BAD computations (do not use these as standalone keys):
+  - df.describe()               ← redundant with the stats already provided
+  - df["col"].value_counts().head(5)  ← already visible in stats; only use if you filter first
+  - df[cols].corr()             ← full matrix already noted in stats; pick a specific pair instead
+  - mean ± 2*std outliers on a skewed column  ← use IQR when stats say "right-skewed"
+
+### How to name keys
+
+Keys must describe what the value reveals, not what operation produced it:
+
+  GOOD: "high_risk_underpaid_roles", "salary_inequality_by_country", "pareto_top3_job_concentration"
+  BAD:  "summary", "correlation", "outliers", "top_5_jobs"
+
+### Outlier detection - match the method to the distribution
+
+  Skewed column (stats says right-skewed or strongly right-skewed):
+    q1, q3 = df["col"].quantile([0.25, 0.75])
+    iqr = q3 - q1
+    outliers = df[(df["col"] < q1 - 1.5*iqr) | (df["col"] > q3 + 1.5*iqr)]
+
+  Symmetric column (stats says roughly symmetric):
+    mu, sigma = df["col"].mean(), df["col"].std()
+    outliers = df[(df["col"] < mu - 2.5*sigma) | (df["col"] > mu + 2.5*sigma)]
+
+---
+
+## Chart instructions
+
+Include a `_charts` key with up to 3 charts.
+
+Rules:
+- Each chart must answer a DIFFERENT question - not the same metric in a different format
+- If a finding is better shown as a table in `result`, skip the chart for it
+- Charts should complement the result keys, not duplicate them
+
+Available types:
+  "bar"         → rankings, group comparisons (≤ 15 categories)
+  "line"        → change over time ONLY; labels must be time-ordered date strings
+  "pie"         → part-of-whole for exactly 2–5 categories; use sparingly
+  "scatter"     → relationship between two numeric columns
+  "histogram"   → distribution shape of one numeric column
+  "grouped_bar" → 2–3 metrics side-by-side per category; requires series_labels
+
+Format rules:
+- Every chart: type, title (< 10 words), labels (list[str]), data (list[number] or list[list])
+- grouped_bar: also needs series_labels (list[str])
+- scatter: also needs data=[[x,y],...] and color_by (see below)
+- labels and data must have the same length
+- All values must be plain Python lists - use .tolist() on numpy/pandas objects
+
+Histogram - always use pd.cut(), never hardcode bin edges:
 ```python
-import pandas as pd          # WRONG - never import
-df = pd.read_csv("data.csv") # WRONG - never read files
-df = pd.read_csv("{filename}") # WRONG - never read files
+bins   = pd.cut(df["salary"], bins=8)
+labels = bins.value_counts(sort=False).index.astype(str).tolist()
+data   = bins.value_counts(sort=False).tolist()
 ```
 
-CORRECT:
-```python
-# df is already a loaded DataFrame, just use it directly
-result = {{"total_rows": len(df), "summary": df.describe()}}
-```
+scatter color_by - CRITICAL:
+- color_by must use a column with FEWER THAN 10 unique values
+- NEVER use: job_title, name, id, or any high-cardinality column → renders as single-colour blob
+- Prefer: class/tier columns, boolean columns, or bins you create:
+    color_by = pd.cut(df["salary"], bins=4, labels=["Q1","Q2","Q3","Q4"]).astype(str).tolist()
+- CORRECT: df["job_survival_class"].astype(str).tolist()   ← 3 values
+- WRONG:   df["job_title"].tolist()                        ← hundreds of values
 
-Chart instructions:
-- Include a `_charts` key in result containing a LIST of chart dicts (up to 3 charts max).
-- Each chart visualises a different angle of the data - do not repeat the same metric twice.
-- Pick charts that together tell a complete story: e.g. one ranking, one trend, one distribution.
-- If there is no meaningful metric to visualise, set `_charts` to an empty list [].
+---
 
-Available chart types and when to use each:
-  "bar"         - compare values across categories (up to ~15 categories)
-  "line"        - values over time (labels must be time-ordered date strings)
-  "pie"         - part-of-whole for 2–5 categories only; values must sum to a meaningful total
-  "scatter"     - correlation between two numeric columns; labels = row identifiers, data = [[x,y], ...]
-  "histogram"   - distribution of a single numeric column; labels = bin range strings, data = counts
-  "grouped_bar" - compare multiple metrics side-by-side per category; requires series_labels
+## Strict code rules
 
-Chart format rules:
-- Every chart must have: type, title, labels (list of strings), data (list of numbers or list-of-lists)
-- grouped_bar also requires: series_labels (list of strings, one per inner list in data)
-- scatter data format: [[x1,y1], [x2,y2], ...] - one [x,y] pair per label
-- labels and data must always have the same length
-- All values must be plain Python lists - use .tolist() to convert numpy arrays or pandas objects
-- title must be a short, descriptive string (under 10 words)
+- `df` is ALREADY loaded - NEVER call pd.read_csv(), pd.read_excel(), open(), or any file I/O
+- Do NOT reassign `df`
+- Do NOT use import statements of any kind
+- `pd`, `np` are already available; `datetime` is already available
+- `result` must be a plain Python dict; values must be DataFrame, Series, or scalar
 
-Choosing the right chart type:
-- Time column present + aggregated by date → "line"
-- One metric ranked across categories → "bar"
-- Two numeric columns to compare → "scatter"
-- Distribution of a numeric column → "histogram"
-- Multiple metrics per category (e.g. revenue AND quantity per region) → "grouped_bar"
-- 2–5 category share of a total → "pie"
-- Never use "pie" for more than 5 categories - use "bar" instead
-- Never use "line" unless labels are time-ordered dates
+---
 
-Respond in this exact format:
+## Output format
 
-EXPLORE: <some sentences - what angles you chose and why, referencing the user question if provided>
+EXPLORE: <2–4 sentences: what is genuinely interesting about THIS dataset based on the stats,
+which specific questions you chose to investigate and why, what pattern or inversion you expect to find>
 CODE:
 ```python
-# Exploration logic - df is already loaded, do NOT read any file
+# df is already loaded - do NOT read any file
 
 result = {{
-    "key1": ...,
-    "key2": ...,
-    "key3": ...,
+    "descriptive_key_1": ...,
+    "descriptive_key_2": ...,
+    "descriptive_key_3": ...,
     "_charts": [
         {{
             "type": "bar",
@@ -101,10 +157,11 @@ result = {{
             "data": [...],
         }},
         {{
-            "type": "line",
+            "type": "scatter",
             "title": "...",
-            "labels": [...],
-            "data": [...],
+            "labels": [],
+            "data": [[x1,y1], ...],
+            "color_by": [...],
         }},
     ],
 }}

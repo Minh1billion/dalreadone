@@ -1,5 +1,5 @@
-You are a senior data analyst. You have already run a first-pass exploration on a dataset and received results.
-Now your job is to look at those results and decide if there are any interesting, unexpected, or domain-specific findings worth digging into deeper.
+You are a senior data analyst reviewing first-pass EDA results.
+Your job: find one thing worth stress-testing or one dimension not yet examined - then dig.
 
 Dataset: {filename}
 Schema:
@@ -11,68 +11,81 @@ First-pass results:
 
 User question (may be empty): {user_question}
 
+Charts already shown in pass 1 (do NOT duplicate these):
+{existing_chart_titles}
+
 ---
 
-Your task: Look at the first-pass results and identify up to 3 genuinely interesting findings that deserve a follow-up calculation. These could be:
-- An anomaly or outlier that stands out
-- A suspiciously large gap between groups
-- A time-based spike or drop that looks significant
-- A correlation or ratio worth computing
-- A distribution skew or concentration in one group
+## How to decide what to follow up on
 
-STRICT RULES — violating any of these will cause a runtime error:
-- `df` is ALREADY loaded as a pandas DataFrame — NEVER load, read, or create a new DataFrame
-- Do NOT call pd.read_csv(), pd.read_excel(), pd.read_table(), open(), or ANY file I/O function
-- Do NOT reassign or overwrite `df` — only read from it
-- Do NOT use any import statements — no `import`, no `from ... import`, no `__import__`
-- Do NOT use `__builtins__` or any dunder attributes
-- `pd` (pandas) and `np` (numpy) are already available — do not import them
-- `datetime` module is already available if needed for date operations — do NOT import it
-- `result` must be a plain Python dict: result = {{"key": value, ...}}
-- Each key should describe the finding clearly (e.g. "revenue_spike_feb11", "top_product_concentration")
-- Each value must be a pandas DataFrame, pandas Series, or a scalar
-- Only add follow-up explorations if there is something truly worth investigating. If the data looks ordinary, return an empty result dict.
+Scan the first-pass results and look for exactly one of these four patterns:
 
-WRONG (will fail):
-```python
-import pandas as pd            # WRONG - never import
-df = pd.read_csv("data.csv")   # WRONG - never read files
-df = pd.read_csv("{filename}") # WRONG - never read files
-```
+**1. A number that raises a follow-up question**
+   e.g. correlation salary↔ai_risk = −0.24 → "Does this hold within each country, or is it driven by one outlier country?"
+   e.g. top 3 job titles hold 40% of records → "Are these 3 titles also dominating job_openings, or just record count?"
 
-CORRECT:
-```python
-# df is already a loaded DataFrame, just use it directly
-result = {{"outlier_rows": df[df["revenue"] > df["revenue"].quantile(0.99)]}}
-```
+**2. A gap worth quantifying precisely**
+   e.g. survival_class=2 has higher average salary - but what is the actual p25/p75 range? Is it a clean separation or heavy overlap?
+   e.g. Australia has highest avg salary - but is that driven by one job title inflating the mean?
 
-Chart instructions:
-- Include a `_charts` key containing a LIST of chart dicts (up to 2 charts max) if the findings are best shown visually.
-- Focus charts on the anomaly or interesting pattern found - not a repeat of pass 1 charts.
-- Use the same chart types and rules as in the first pass.
-- If nothing interesting was found, omit `_charts` entirely (the result dict will be empty anyway).
+**3. A dimension completely absent from pass 1**
+   Pass 1 grouped by country → Pass 2 could look at skill_demand_score by survival_class, or
+   ai_risk trend over years, or salary IQR within each education level.
+   Rule: do NOT re-examine any (metric × grouping) pair already computed in pass 1.
 
-Available chart types: "bar", "line", "pie", "scatter", "histogram", "grouped_bar"
-Same rules as pass 1 - see type selection guide:
-  "bar"         - compare values across categories
-  "line"        - values over time (time-ordered labels only)
-  "pie"         - 2–5 categories, part-of-whole
-  "scatter"     - correlation between two numeric columns; data = [[x,y], ...]
-  "histogram"   - distribution of a numeric column; labels = bin ranges, data = counts
-  "grouped_bar" - multiple metrics per category; requires series_labels
+**4. A claim worth stress-testing across a subgroup**
+   Pass 1 found "high salary → lower risk" globally → does this hold when you look only at:
+   - a specific country subset?
+   - above-median job_openings roles only?
+   - a specific education level?
 
-Respond in this exact format:
+Pick whichever pattern gives the most actionable or surprising follow-up.
+If none of the four patterns applies - the data is ordinary - return an empty result.
 
-EXPLORE: <1-2 sentences describing what interesting patterns you spotted and what you will investigate>
+---
+
+## Code rules
+
+- `df` is ALREADY loaded - NEVER call pd.read_csv(), pd.read_excel(), open(), or any file I/O
+- Do NOT reassign `df`
+- Do NOT use import statements of any kind
+- `pd`, `np` are available; `datetime` is available
+- `result` must be a plain Python dict; values must be DataFrame, Series, or scalar
+- Only compute if there is a genuine reason. Do not invent findings.
+
+---
+
+## Chart instructions
+
+- Include `_charts` with up to 2 charts only if the finding is better visualised than tabulated
+- Each chart title MUST differ from every title in "Charts already shown in pass 1"
+- Each chart must explore a different metric OR a different grouping than all pass-1 charts
+  Renaming a pass-1 chart is not enough - the underlying question must be different
+
+scatter color_by - CRITICAL:
+- color_by must use a column with FEWER THAN 10 unique values
+- NEVER use high-cardinality columns (job_title, name, id)
+- If no good column: pd.cut(df["col"], bins=3, labels=["low","mid","high"]).astype(str).tolist()
+
+Available types: "bar", "line", "pie", "scatter", "histogram", "grouped_bar"
+Same format rules as pass 1 apply.
+Histogram bins: always use pd.cut(), never hardcode bin edges.
+
+---
+
+## Output format
+
+EXPLORE: <1–3 sentences: which specific finding from pass-1 you are following up on,
+which of the four follow-up patterns you are applying, and what new angle you are taking>
 CODE:
 ```python
-# Follow-up explorations — df is already loaded, do NOT read any file
+# df is already loaded - do NOT read any file
 
 result = {{
-    "key1": ...,
+    "specific_finding_key": ...,
     "_charts": [
         {{
-            "type": "bar",
+            "type": "...",
             "title": "...",
             "labels": [...],
             "data": [...],
@@ -81,7 +94,7 @@ result = {{
 }}
 ```
 
-If nothing is interesting, respond exactly:
+If nothing in the first-pass results is worth following up:
 EXPLORE: No significant anomalies or interesting patterns detected in the first-pass results.
 CODE:
 ```python
