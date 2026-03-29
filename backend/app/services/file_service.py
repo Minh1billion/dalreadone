@@ -4,6 +4,10 @@ from sqlalchemy.orm import Session
 from pathlib import Path
 from datetime import datetime
 
+import pandas as pd
+import numpy as np
+import io
+
 from app.models import File, Project
 from app.storage.s3_client import upload_file, delete_file, get_file_bytes as s3_get_file_bytes
 
@@ -97,3 +101,61 @@ def get_file_bytes(db: Session, file_id: int, user_id: int) -> tuple[bytes, str]
     if record.project.user_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     return s3_get_file_bytes(record.s3_key), record.filename
+
+def get_file_preview(db: Session, file_id: int, user_id: int) -> dict:
+    """
+    Return lightweight DataFrame statistics for the file preview panel.
+    No LLM involved — pure pandas.
+    """
+    file_bytes, filename = get_file_bytes(db, file_id, user_id)
+    
+    buf = io.BytesIO(file_bytes)
+    if filename.endswith(".csv"):
+        df = pd.read_csv(buf)
+    else:
+        df = pd.read_excel(buf)
+
+    n_rows, n_cols = df.shape
+
+    # Missing value stats 
+    missing = []
+    for col in df.columns:
+        null_count = int(df[col].isna().sum())
+        missing.append({
+            "column":     col,
+            "dtype":      str(df[col].dtype),
+            "null_count": null_count,
+            "null_pct":   round(null_count / n_rows * 100, 1) if n_rows > 0 else 0.0,
+        })
+
+    # Numeric describe 
+    numeric_cols = df.select_dtypes(include="number").columns.tolist()
+    describe_rows = []
+    if numeric_cols:
+        desc = df[numeric_cols].describe().round(3)
+        for col in numeric_cols:
+            s = desc[col]
+            describe_rows.append({
+                "column": col,
+                "count":  s.get("count"),
+                "mean":   s.get("mean"),
+                "std":    s.get("std"),
+                "min":    s.get("min"),
+                "25%":    s.get("25%"),
+                "50%":    s.get("50%"),
+                "75%":    s.get("75%"),
+                "max":    s.get("max"),
+            })
+
+    # Sample rows 
+    sample = df.head(5).replace({np.nan: None}).to_dict(orient="records")
+
+    return {
+        "filename":      filename,
+        "shape":         {"rows": n_rows, "cols": n_cols},
+        "columns":       list(df.columns),
+        "missing":       missing,
+        "describe":      describe_rows,
+        "sample":        sample,
+        "dtypes":        {col: str(dtype) for col, dtype in df.dtypes.items()},
+    }

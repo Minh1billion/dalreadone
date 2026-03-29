@@ -37,6 +37,7 @@ def build_dataframe_context(file_bytes: bytes, filename: str) -> dict:
     """
     df = _load_df(file_bytes, filename)
     heavy, text_cols = is_text_heavy(df)
+    non_text_cols = [col for col in df.columns if col not in text_cols]
     strategy = NLPStrategy(text_cols) if heavy else StructuredStrategy()
     return strategy.build(df, filename)
 
