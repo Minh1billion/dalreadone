@@ -1,0 +1,790 @@
+{
+  "eda_report": {
+    "meta": {
+      "source": "data.csv",
+      "file_format": ".csv",
+      "timestamp": "2026-03-30T11:20:45.724768+00:00"
+    },
+    "schema": {
+      "n_rows": 50,
+      "n_cols": 11,
+      "memory_mb": 0.02,
+      "columns": [
+        {
+          "name": "order_id",
+          "dtype": "int64",
+          "inferred_type": "integer",
+          "n_nulls": 0,
+          "n_unique": 50,
+          "first_10_unique_values": [
+            1001,
+            1002,
+            1003,
+            1004,
+            1005,
+            1006,
+            1007,
+            1008,
+            1009,
+            1010
+          ]
+        },
+        {
+          "name": "order_date",
+          "dtype": "object",
+          "inferred_type": "string",
+          "n_nulls": 0,
+          "n_unique": 50,
+          "first_10_unique_values": [
+            "2024-01-03",
+            "2024-01-05",
+            "2024-01-07",
+            "2024-01-09",
+            "2024-01-12",
+            "2024-01-14",
+            "2024-01-16",
+            "2024-01-19",
+            "2024-01-22",
+            "2024-01-25"
+          ]
+        },
+        {
+          "name": "customer_id",
+          "dtype": "object",
+          "inferred_type": "string",
+          "n_nulls": 0,
+          "n_unique": 18,
+          "first_10_unique_values": [
+            "C001",
+            "C002",
+            "C003",
+            "C004",
+            "C005",
+            "C006",
+            "C007",
+            "C008",
+            "C009",
+            "C010"
+          ]
+        },
+        {
+          "name": "customer_name",
+          "dtype": "object",
+          "inferred_type": "string",
+          "n_nulls": 2,
+          "n_unique": 18,
+          "first_10_unique_values": [
+            "Nguyen Van A",
+            "Tran Thi B",
+            "Le Van C",
+            "Pham Thi D",
+            "Hoang Van E",
+            "Vo Thi F",
+            "Dang Van G",
+            "Nguyen Thi H",
+            "Bui Van I",
+            "Ly Thi J"
+          ]
+        },
+        {
+          "name": "region",
+          "dtype": "object",
+          "inferred_type": "string",
+          "n_nulls": 4,
+          "n_unique": 5,
+          "first_10_unique_values": [
+            "North",
+            "South",
+            "Central",
+            "East",
+            "West",
+            NaN
+          ]
+        },
+        {
+          "name": "category",
+          "dtype": "object",
+          "inferred_type": "string",
+          "n_nulls": 1,
+          "n_unique": 4,
+          "first_10_unique_values": [
+            "Electronics",
+            "Clothing",
+            "Books",
+            "Home",
+            NaN
+          ]
+        },
+        {
+          "name": "product_name",
+          "dtype": "object",
+          "inferred_type": "string",
+          "n_nulls": 0,
+          "n_unique": 46,
+          "first_10_unique_values": [
+            "Wireless Mouse",
+            "Cotton T-Shirt",
+            "USB-C Hub",
+            "Data Science Handbook",
+            "Bluetooth Speaker",
+            "Denim Jacket",
+            "Python Programming",
+            "Coffee Maker",
+            "Air Purifier",
+            "Laptop Stand"
+          ]
+        },
+        {
+          "name": "quantity",
+          "dtype": "int64",
+          "inferred_type": "integer",
+          "n_nulls": 0,
+          "n_unique": 4,
+          "first_10_unique_values": [
+            2,
+            3,
+            1,
+            4
+          ]
+        },
+        {
+          "name": "unit_price",
+          "dtype": "int64",
+          "inferred_type": "integer",
+          "n_nulls": 0,
+          "n_unique": 38,
+          "first_10_unique_values": [
+            350000,
+            120000,
+            450000,
+            85000,
+            780000,
+            650000,
+            95000,
+            920000,
+            2100000,
+            320000
+          ]
+        },
+        {
+          "name": "discount",
+          "dtype": "float64",
+          "inferred_type": "floating",
+          "n_nulls": 0,
+          "n_unique": 5,
+          "first_10_unique_values": [
+            0.05,
+            0.0,
+            0.1,
+            0.15,
+            0.2
+          ]
+        },
+        {
+          "name": "status",
+          "dtype": "object",
+          "inferred_type": "string",
+          "n_nulls": 0,
+          "n_unique": 2,
+          "first_10_unique_values": [
+            "completed",
+            "cancelled"
+          ]
+        }
+      ]
+    },
+    "missing_and_duplicates": {
+      "duplicate_rows": 0,
+      "duplicate_pct": 0.0,
+      "columns": {
+        "customer_name": {
+          "null_count": 2,
+          "null_pct": 4.0
+        },
+        "region": {
+          "null_count": 4,
+          "null_pct": 8.0
+        },
+        "category": {
+          "null_count": 1,
+          "null_pct": 2.0
+        }
+      }
+    },
+    "univariate": {
+      "numeric": {
+        "order_id": {
+          "mean": 1025.5,
+          "median": 1025.5,
+          "std": 14.577379737113251,
+          "min": 1001.0,
+          "max": 1050.0,
+          "p25": 1013.25,
+          "p75": 1037.75,
+          "skewness": 0.0,
+          "kurtosis": -1.2,
+          "zeros_pct": 0.0,
+          "outlier_count": 0,
+          "outlier_pct": 0.0
+        },
+        "quantity": {
+          "mean": 1.54,
+          "median": 1.0,
+          "std": 0.8134080483135291,
+          "min": 1.0,
+          "max": 4.0,
+          "p25": 1.0,
+          "p75": 2.0,
+          "skewness": 1.5249886005008868,
+          "kurtosis": 1.7940772569185848,
+          "zeros_pct": 0.0,
+          "outlier_count": 2,
+          "outlier_pct": 4.0
+        },
+        "unit_price": {
+          "mean": 895300.0,
+          "median": 435000.0,
+          "std": 1177628.8048620485,
+          "min": 75000.0,
+          "max": 5500000.0,
+          "p25": 157500.0,
+          "p75": 965000.0,
+          "skewness": 2.226582715851777,
+          "kurtosis": 4.95553665218808,
+          "zeros_pct": 0.0,
+          "outlier_count": 6,
+          "outlier_pct": 12.0
+        },
+        "discount": {
+          "mean": 0.07800000000000001,
+          "median": 0.05,
+          "std": 0.07082603003566022,
+          "min": 0.0,
+          "max": 0.2,
+          "p25": 0.0,
+          "p75": 0.1375,
+          "skewness": 0.43411358632562574,
+          "kurtosis": -1.0725154286700014,
+          "zeros_pct": 32.0,
+          "outlier_count": 0,
+          "outlier_pct": 0.0
+        }
+      },
+      "categorical": {
+        "order_date": {
+          "cardinality": 50,
+          "top_values": [
+            {
+              "value": "2024-01-03",
+              "count": 1,
+              "pct": 2.0
+            },
+            {
+              "value": "2024-01-05",
+              "count": 1,
+              "pct": 2.0
+            },
+            {
+              "value": "2024-01-07",
+              "count": 1,
+              "pct": 2.0
+            },
+            {
+              "value": "2024-01-09",
+              "count": 1,
+              "pct": 2.0
+            },
+            {
+              "value": "2024-01-12",
+              "count": 1,
+              "pct": 2.0
+            }
+          ],
+          "entropy": 5.643856117639974,
+          "mode": "2024-01-03",
+          "rare_pct": 0.0
+        },
+        "customer_id": {
+          "cardinality": 18,
+          "top_values": [
+            {
+              "value": "C001",
+              "count": 4,
+              "pct": 8.0
+            },
+            {
+              "value": "C002",
+              "count": 3,
+              "pct": 6.0
+            },
+            {
+              "value": "C003",
+              "count": 3,
+              "pct": 6.0
+            },
+            {
+              "value": "C004",
+              "count": 3,
+              "pct": 6.0
+            },
+            {
+              "value": "C005",
+              "count": 3,
+              "pct": 6.0
+            }
+          ],
+          "entropy": 4.142683163286981,
+          "mode": "C001",
+          "rare_pct": 0.0
+        },
+        "customer_name": {
+          "cardinality": 18,
+          "top_values": [
+            {
+              "value": "Nguyen Van A",
+              "count": 4,
+              "pct": 8.33
+            },
+            {
+              "value": "Tran Thi B",
+              "count": 3,
+              "pct": 6.25
+            },
+            {
+              "value": "Le Van C",
+              "count": 3,
+              "pct": 6.25
+            },
+            {
+              "value": "Pham Thi D",
+              "count": 3,
+              "pct": 6.25
+            },
+            {
+              "value": "Hoang Van E",
+              "count": 3,
+              "pct": 6.25
+            }
+          ],
+          "entropy": 4.12030075550685,
+          "mode": "Nguyen Van A",
+          "rare_pct": 0.0
+        },
+        "region": {
+          "cardinality": 5,
+          "top_values": [
+            {
+              "value": "North",
+              "count": 17,
+              "pct": 36.96
+            },
+            {
+              "value": "South",
+              "count": 10,
+              "pct": 21.74
+            },
+            {
+              "value": "Central",
+              "count": 8,
+              "pct": 17.39
+            },
+            {
+              "value": "East",
+              "count": 6,
+              "pct": 13.04
+            },
+            {
+              "value": "West",
+              "count": 5,
+              "pct": 10.87
+            }
+          ],
+          "entropy": 2.1795279329980346,
+          "mode": "North",
+          "rare_pct": 0.0
+        },
+        "category": {
+          "cardinality": 4,
+          "top_values": [
+            {
+              "value": "Electronics",
+              "count": 20,
+              "pct": 40.82
+            },
+            {
+              "value": "Clothing",
+              "count": 10,
+              "pct": 20.41
+            },
+            {
+              "value": "Home",
+              "count": 10,
+              "pct": 20.41
+            },
+            {
+              "value": "Books",
+              "count": 9,
+              "pct": 18.37
+            }
+          ],
+          "entropy": 1.9125374136816666,
+          "mode": "Electronics",
+          "rare_pct": 0.0
+        },
+        "product_name": {
+          "cardinality": 46,
+          "top_values": [
+            {
+              "value": "Wireless Mouse",
+              "count": 2,
+              "pct": 4.0
+            },
+            {
+              "value": "USB-C Hub",
+              "count": 2,
+              "pct": 4.0
+            },
+            {
+              "value": "Mechanical Keyboard",
+              "count": 2,
+              "pct": 4.0
+            },
+            {
+              "value": "Smart Watch",
+              "count": 2,
+              "pct": 4.0
+            },
+            {
+              "value": "Bluetooth Speaker",
+              "count": 1,
+              "pct": 2.0
+            }
+          ],
+          "entropy": 5.483856123410752,
+          "mode": "Mechanical Keyboard",
+          "rare_pct": 0.0
+        },
+        "status": {
+          "cardinality": 2,
+          "top_values": [
+            {
+              "value": "completed",
+              "count": 46,
+              "pct": 92.0
+            },
+            {
+              "value": "cancelled",
+              "count": 4,
+              "pct": 8.0
+            }
+          ],
+          "entropy": 0.4021791873168828,
+          "mode": "completed",
+          "rare_pct": 0.0
+        }
+      }
+    },
+    "datetime": {
+      "order_date": {
+        "min_date": "2024-01-03",
+        "max_date": "2024-05-27",
+        "date_range_days": 145,
+        "inferred_freq": null,
+        "gaps_count": null,
+        "seasonality_hint": "unknown",
+        "timezone": "naive"
+      }
+    },
+    "correlations": {
+      "pearson": {
+        "order_id__quantity": -0.037,
+        "order_id__unit_price": 0.1133,
+        "order_id__discount": 0.0899,
+        "quantity__unit_price": -0.4044,
+        "quantity__discount": -0.4981,
+        "unit_price__discount": 0.7974
+      },
+      "cramers_v": {
+        "order_date__customer_id": 1.0,
+        "order_date__customer_name": 1.0,
+        "order_date__region": 1.0,
+        "order_date__category": 1.0,
+        "order_date__product_name": 1.0,
+        "order_date__status": 1.0,
+        "customer_id__customer_name": 1.0,
+        "customer_id__region": 1.0192,
+        "customer_id__category": 0.5982,
+        "customer_id__product_name": 0.9567,
+        "customer_id__status": 0.6014,
+        "customer_name__region": 1.0148,
+        "customer_name__category": 0.6313,
+        "customer_name__product_name": 0.9549,
+        "customer_name__status": 0.6307,
+        "region__category": 0.4328,
+        "region__product_name": 0.9441,
+        "region__status": 0.4922,
+        "category__product_name": 1.0,
+        "category__status": 0.4553,
+        "product_name__status": 0.9798
+      },
+      "top_corr_pairs": [
+        {
+          "col_a": "customer_id",
+          "col_b": "region",
+          "method": "cramers_v",
+          "value": 1.0192
+        },
+        {
+          "col_a": "customer_name",
+          "col_b": "region",
+          "method": "cramers_v",
+          "value": 1.0148
+        },
+        {
+          "col_a": "order_date",
+          "col_b": "customer_id",
+          "method": "cramers_v",
+          "value": 1.0
+        },
+        {
+          "col_a": "order_date",
+          "col_b": "customer_name",
+          "method": "cramers_v",
+          "value": 1.0
+        },
+        {
+          "col_a": "order_date",
+          "col_b": "region",
+          "method": "cramers_v",
+          "value": 1.0
+        }
+      ]
+    },
+    "distributions": {
+      "order_id": {
+        "normality_test": {
+          "method": "shapiro",
+          "p_value": 0.05809,
+          "is_normal": true
+        },
+        "dist_type_hint": "approximately-normal",
+        "histogram_bins": [
+          {
+            "range": "[1001.0,1005.9)",
+            "count": 5
+          },
+          {
+            "range": "[1005.9,1010.8)",
+            "count": 5
+          },
+          {
+            "range": "[1010.8,1015.7)",
+            "count": 5
+          },
+          {
+            "range": "[1015.7,1020.6)",
+            "count": 5
+          },
+          {
+            "range": "[1020.6,1025.5)",
+            "count": 5
+          },
+          {
+            "range": "[1025.5,1030.4)",
+            "count": 5
+          },
+          {
+            "range": "[1030.4,1035.3)",
+            "count": 5
+          },
+          {
+            "range": "[1035.3,1040.2)",
+            "count": 5
+          },
+          {
+            "range": "[1040.2,1045.1)",
+            "count": 5
+          },
+          {
+            "range": "[1045.1,1050.0)",
+            "count": 5
+          }
+        ],
+        "outlier_rows_idx": []
+      },
+      "quantity": {
+        "normality_test": {
+          "method": "shapiro",
+          "p_value": 0.0,
+          "is_normal": false
+        },
+        "dist_type_hint": "right-skewed",
+        "histogram_bins": [
+          {
+            "range": "[1.0,1.3)",
+            "count": 31
+          },
+          {
+            "range": "[1.3,1.6)",
+            "count": 0
+          },
+          {
+            "range": "[1.6,1.9)",
+            "count": 0
+          },
+          {
+            "range": "[1.9,2.2)",
+            "count": 13
+          },
+          {
+            "range": "[2.2,2.5)",
+            "count": 0
+          },
+          {
+            "range": "[2.5,2.8)",
+            "count": 0
+          },
+          {
+            "range": "[2.8,3.1)",
+            "count": 4
+          },
+          {
+            "range": "[3.1,3.4)",
+            "count": 0
+          },
+          {
+            "range": "[3.4,3.7)",
+            "count": 0
+          },
+          {
+            "range": "[3.7,4.0)",
+            "count": 2
+          }
+        ],
+        "outlier_rows_idx": [
+          32,
+          40
+        ]
+      },
+      "unit_price": {
+        "normality_test": {
+          "method": "shapiro",
+          "p_value": 0.0,
+          "is_normal": false
+        },
+        "dist_type_hint": "right-skewed",
+        "histogram_bins": [
+          {
+            "range": "[75000.0,617500.0)",
+            "count": 30
+          },
+          {
+            "range": "[617500.0,1160000.0)",
+            "count": 9
+          },
+          {
+            "range": "[1160000.0,1702500.0)",
+            "count": 3
+          },
+          {
+            "range": "[1702500.0,2245000.0)",
+            "count": 2
+          },
+          {
+            "range": "[2245000.0,2787500.0)",
+            "count": 0
+          },
+          {
+            "range": "[2787500.0,3330000.0)",
+            "count": 3
+          },
+          {
+            "range": "[3330000.0,3872500.0)",
+            "count": 1
+          },
+          {
+            "range": "[3872500.0,4415000.0)",
+            "count": 1
+          },
+          {
+            "range": "[4415000.0,4957500.0)",
+            "count": 0
+          },
+          {
+            "range": "[4957500.0,5500000.0)",
+            "count": 1
+          }
+        ],
+        "outlier_rows_idx": [
+          14,
+          21,
+          27,
+          34,
+          39,
+          49
+        ]
+      },
+      "discount": {
+        "normality_test": {
+          "method": "shapiro",
+          "p_value": 4e-05,
+          "is_normal": false
+        },
+        "dist_type_hint": "approximately-normal",
+        "histogram_bins": [
+          {
+            "range": "[0.0,0.02)",
+            "count": 16
+          },
+          {
+            "range": "[0.02,0.04)",
+            "count": 0
+          },
+          {
+            "range": "[0.04,0.06)",
+            "count": 10
+          },
+          {
+            "range": "[0.06,0.08)",
+            "count": 0
+          },
+          {
+            "range": "[0.08,0.1)",
+            "count": 0
+          },
+          {
+            "range": "[0.1,0.12)",
+            "count": 11
+          },
+          {
+            "range": "[0.12,0.14)",
+            "count": 0
+          },
+          {
+            "range": "[0.14,0.16)",
+            "count": 6
+          },
+          {
+            "range": "[0.16,0.18)",
+            "count": 0
+          },
+          {
+            "range": "[0.18,0.2)",
+            "count": 7
+          }
+        ],
+        "outlier_rows_idx": []
+      }
+    },
+    "data_quality_score": {
+      "completeness": 0.9873,
+      "consistency": 0.96,
+      "uniqueness": 1.0,
+      "timeliness": 1.0,
+      "overall_score": 0.9856,
+      "flags": [
+        "high null in 'region' (8.0%)"
+      ]
+    }
+  }
+}

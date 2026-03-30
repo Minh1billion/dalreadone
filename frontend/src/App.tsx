@@ -4,7 +4,7 @@ import { useAuthStore } from './store/authStore'
 import AppLayout from './components/layout/AppLayout'
 import LoginPage from './pages/LoginPage'
 import ProjectsPage from './pages/ProjectsPage'
-import QueryPage from './pages/QueryPage'
+import ProjectPage from './pages/ProjectPage'
 import SettingsPage from './pages/SettingsPage'
 
 const queryClient = new QueryClient()
@@ -26,7 +26,7 @@ export default function App() {
             </PrivateRoute>
           }>
             <Route path="/" element={<ProjectsPage />} />
-            <Route path="/projects/:projectId" element={<QueryPage />} />
+            <Route path="/projects/:projectId" element={<ProjectPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

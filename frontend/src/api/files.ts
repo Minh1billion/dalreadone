@@ -1,40 +1,30 @@
 import { api } from './axios'
 
+export type FileItem = {
+  id: number
+  filename: string
+  s3_key: string
+  project_id: number
+  uploaded_by_id: number
+  uploaded_at: string
+}
+
 export type FilePreview = {
   filename: string
-  shape: { rows: number; cols: number }
+  n_rows: number
+  n_cols: number
   columns: string[]
-  dtypes: Record<string, string>
-  missing: {
-    column: string
-    dtype: string
-    null_count: number
-    null_pct: number
-  }[]
-  describe: {
-    column: string
-    count: number | null
-    mean: number | null
-    std: number | null
-    min: number | null
-    p25: number | null
-    median: number | null
-    p75: number | null
-    max: number | null
-  }[]
-  sample: Record<string, unknown>[]
-  strategy: 'nlp' | 'structured'
-  text_cols: string[]
+  rows: Record<string, unknown>[]
 }
 
 export const filesApi = {
   list: (projectId: number) =>
-    api.get(`/projects/${projectId}/files`),
+    api.get<FileItem[]>(`/projects/${projectId}/files`),
 
   upload: (projectId: number, file: File) => {
     const form = new FormData()
     form.append('file', file)
-    return api.post(`/projects/${projectId}/files`, form, {
+    return api.post<FileItem>(`/projects/${projectId}/files`, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },

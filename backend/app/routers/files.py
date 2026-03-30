@@ -9,10 +9,11 @@ from app.services.file_service import (
     upload_project_file,
     delete_project_file,
     list_project_files,
-    get_file_preview
+    get_file_preview,
 )
 
 router = APIRouter(prefix="/projects/{project_id}/files", tags=["files"])
+
 
 @router.post("", response_model=FileResponse, status_code=201)
 def upload_file(
@@ -38,9 +39,10 @@ def delete_file(
     project_id: int,
     file_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     return delete_project_file(db, project_id, file_id, current_user.id)
+
 
 @router.get("/{file_id}/preview")
 def preview_file(

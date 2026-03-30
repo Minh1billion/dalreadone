@@ -30,21 +30,21 @@ order_id,order_date,customer_id,customer_name,region,category,product_name,quant
 1029,2024-03-22,C015,Cao Van O,West,Books,Startup Playbook,1,120000,0.00,cancelled
 1030,2024-03-25,C012,Do Thi L,Central,Electronics,Portable Charger,2,290000,0.05,completed
 1031,2024-04-02,C004,Pham Thi D,North,Home,Coffee Grinder,1,480000,0.10,completed
-1032,2024-04-05,C013,Phan Van M,East,Electronics,Gaming Mouse,1,750000,0.15,completed
+1032,2024-04-05,C013,,East,Electronics,Gaming Mouse,1,750000,0.15,completed
 1033,2024-04-07,C005,Hoang Van E,South,Clothing,Polo Shirt,4,150000,0.00,completed
-1034,2024-04-10,C006,Vo Thi F,East,Books,Deep Learning Book,1,130000,0.05,completed
+1034,2024-04-10,C006,Vo Thi F,East,,Deep Learning Book,1,130000,0.05,completed
 1035,2024-04-13,C014,Trinh Thi N,North,Electronics,Monitor 24in,1,3200000,0.20,completed
-1036,2024-04-15,C016,Vuong Van P,South,Home,Electric Kettle,2,320000,0.00,completed
+1036,2024-04-15,C016,Vuong Van P,,Home,Electric Kettle,2,320000,0.00,completed
 1037,2024-04-18,C015,Cao Van O,West,Clothing,Yoga Pants,2,280000,0.10,completed
 1038,2024-04-21,C001,Nguyen Van A,North,Electronics,Portable Speaker,1,620000,0.05,completed
-1039,2024-04-23,C007,Dang Van G,South,Books,SQL Cookbook,1,95000,0.00,completed
+1039,2024-04-23,C007,Dang Van G,,Books,SQL Cookbook,1,95000,0.00,completed
 1040,2024-04-26,C017,Dinh Thi Q,Central,Electronics,Tablet 10in,1,5500000,0.20,cancelled
 1041,2024-05-02,C008,Nguyen Thi H,North,Home,Smart Light Bulb,4,95000,0.00,completed
-1042,2024-05-05,C016,Vuong Van P,South,Electronics,Wireless Charger,2,380000,0.10,completed
+1042,2024-05-05,C016,,,Electronics,Wireless Charger,2,380000,0.10,completed
 1043,2024-05-07,C009,Bui Van I,West,Clothing,Formal Trousers,1,420000,0.05,completed
 1044,2024-05-10,C018,Lam Van R,North,Books,Product Management,2,105000,0.00,completed
 1045,2024-05-13,C010,Ly Thi J,North,Electronics,Drawing Tablet,1,1650000,0.15,completed
-1046,2024-05-15,C011,Ngo Van K,South,Home,Blender,1,560000,0.10,completed
+1046,2024-05-15,C011,Ngo Van K,,Home,Blender,1,560000,0.10,completed
 1047,2024-05-18,C017,Dinh Thi Q,Central,Clothing,Linen Trousers,2,350000,0.00,completed
 1048,2024-05-21,C012,Do Thi L,Central,Electronics,Mechanical Keyboard,1,1200000,0.15,completed
 1049,2024-05-24,C013,Phan Van M,East,Books,Cloud Architecture,1,115000,0.05,completed

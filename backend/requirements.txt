@@ -2,6 +2,7 @@
 pandas
 matplotlib
 seaborn
+scipy
 
 # LLM
 groq
@@ -12,6 +13,7 @@ tabulate
 
 # Storage
 boto3
+redis
 
 # Database
 sqlalchemy

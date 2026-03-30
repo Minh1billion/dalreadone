@@ -26,6 +26,12 @@ class Config:
         f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
     )
 
+    # Redis
+    REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
+    REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
+    REDIS_URL  = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
+    EDA_TASK_TTL = int(os.environ.get("EDA_TASK_TTL", 3600))  # seconds
+
     # JWT
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
     JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
@@ -45,6 +51,6 @@ class Config:
     # App
     ENV = os.environ.get("ENV", "development")
     FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
-    
+
     # Encryption
     ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY")

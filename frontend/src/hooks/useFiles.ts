@@ -7,11 +7,7 @@ export function useFiles(projectId: number) {
     enabled: !!projectId,
     queryFn: async () => {
       const { data } = await filesApi.list(projectId)
-      // Normalize: array thẳng
-      if (Array.isArray(data)) return data
-      if (Array.isArray(data?.data))  return data.data
-      if (Array.isArray(data?.files)) return data.files
-      return []
+      return data
     },
   })
 }

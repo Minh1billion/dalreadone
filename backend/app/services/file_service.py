@@ -10,10 +10,9 @@ import io
 
 from app.models import File, Project
 from app.storage.s3_client import upload_file, delete_file, get_file_bytes as s3_get_file_bytes
-from app.llm.text_detector import is_text_heavy
 
 
-ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".xls"}
+ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".xls", ".json", ".jsonl", ".parquet"}
 MAX_FILES_PER_PROJECT = 5
 
 
@@ -25,6 +24,7 @@ def _get_project(db: Session, project_id: int, user_id: int) -> Project:
         raise HTTPException(status_code=403, detail="Not authorized")
     return project
 
+
 def _validate_file(file: UploadFile):
     ext = Path(file.filename).suffix
     if ext not in ALLOWED_EXTENSIONS:
@@ -32,12 +32,12 @@ def _validate_file(file: UploadFile):
             status_code=400,
             detail=f"File type not allowed. Accepted: {', '.join(ALLOWED_EXTENSIONS)}"
         )
-        
+
+
 def _validate_file_content(file: UploadFile) -> bytes:
-    """Read and validate file can actually be parsed."""
     content = file.file.read()
-    file.file.seek(0)  # reset for subsequent read
-    
+    file.file.seek(0)
+
     filename = file.filename
     try:
         buf = io.BytesIO(content)
@@ -51,6 +51,14 @@ def _validate_file_content(file: UploadFile) -> bytes:
             detail=f"File appears to be corrupt or unreadable: {str(e)}"
         )
     return content
+
+
+def _load_dataframe(content: bytes, filename: str) -> pd.DataFrame:
+    buf = io.BytesIO(content)
+    if filename.endswith(".csv"):
+        return pd.read_csv(buf, low_memory=False)
+    return pd.read_excel(buf)
+
 
 def upload_project_file(
     db: Session,
@@ -93,6 +101,7 @@ def upload_project_file(
     db.refresh(record)
     return record
 
+
 def delete_project_file(
     db: Session,
     project_id: int,
@@ -107,6 +116,7 @@ def delete_project_file(
     db.delete(record)
     db.commit()
 
+
 def list_project_files(
     db: Session,
     project_id: int,
@@ -114,6 +124,7 @@ def list_project_files(
 ) -> list[File]:
     _get_project(db, project_id, user_id)
     return db.query(File).filter(File.project_id == project_id).all()
+
 
 def get_file_bytes(db: Session, file_id: int, user_id: int) -> tuple[bytes, str]:
     record = db.query(File).filter(File.id == file_id).first()
@@ -123,65 +134,17 @@ def get_file_bytes(db: Session, file_id: int, user_id: int) -> tuple[bytes, str]
         raise HTTPException(status_code=403, detail="Not authorized")
     return s3_get_file_bytes(record.s3_key), record.filename
 
-def get_file_preview(db: Session, file_id: int, user_id: int) -> dict:
-    """
-    Return lightweight DataFrame statistics for the file preview panel.
-    No LLM involved — pure pandas.
-    """
-    file_bytes, filename = get_file_bytes(db, file_id, user_id)
-    
-    buf = io.BytesIO(file_bytes)
-    if filename.endswith(".csv"):
-        df = pd.read_csv(buf)
-    else:
-        df = pd.read_excel(buf)
 
-    n_rows, n_cols = df.shape
+def get_file_preview(db: Session, file_id: int, user_id: int, n_rows: int = 100) -> dict:
+    content, filename = get_file_bytes(db, file_id, user_id)
+    df = _load_dataframe(content, filename)
 
-    # Missing value stats 
-    missing = []
-    for col in df.columns:
-        null_count = int(df[col].isna().sum())
-        missing.append({
-            "column":     col,
-            "dtype":      str(df[col].dtype),
-            "null_count": null_count,
-            "null_pct":   round(null_count / n_rows * 100, 1) if n_rows > 0 else 0.0,
-        })
-
-    # Numeric describe 
-    numeric_cols = df.select_dtypes(include="number").columns.tolist()
-    describe_rows = []
-    if numeric_cols:
-        desc = df[numeric_cols].describe().round(3)
-        for col in numeric_cols:
-            s = desc[col]
-            describe_rows.append({
-                "column": col,
-                "count":  s.get("count"),
-                "mean":   s.get("mean"),
-                "std":    s.get("std"),
-                "min":    s.get("min"),
-                "25%":    s.get("25%"),
-                "50%":    s.get("50%"),
-                "75%":    s.get("75%"),
-                "max":    s.get("max"),
-            })
-
-    # Sample rows 
-    sample = df.head(5).replace({np.nan: None}).to_dict(orient="records")
-    
-    
-    heavy, text_cols = is_text_heavy(df)
+    preview_df = df.head(n_rows).replace({np.nan: None})
 
     return {
-        "filename":      filename,
-        "shape":         {"rows": n_rows, "cols": n_cols},
-        "columns":       list(df.columns),
-        "missing":       missing,
-        "describe":      describe_rows,
-        "sample":        sample,
-        "dtypes":        {col: str(dtype) for col, dtype in df.dtypes.items()},
-        "strategy":   "nlp" if heavy else "structured",
-        "text_cols":  text_cols,
+        "filename": filename,
+        "n_rows": len(df),
+        "n_cols": len(df.columns),
+        "columns": df.columns.tolist(),
+        "rows": preview_df.to_dict(orient="records"),
     }
