@@ -5,7 +5,7 @@ import FilePanel from '../components/query/FilePanel'
 import HistoryPanel from '../components/query/HistoryPanel'
 import ResultPanel from '../components/query/ResultPanel'
 import ExportPdfButton from '../components/query/ExportPdfButton'
-import StopwordsEditor from '../components/query/StopwordsEditor'   // ← new
+import StopwordsEditor from '../components/query/StopwordsEditor'
 import { IconBack, IconSend } from '../components/ui/icons'
 import type { QueryResponse } from '../api/query'
 
@@ -21,8 +21,8 @@ export default function QueryPage() {
     activeFileId,
     question,
     setQuestion,
-    stopwords,          // ← new
-    setStopwords,       // ← new
+    stopwords,
+    setStopwords,
     handleSelectFile,
     handleSubmit: _handleSubmit,
     handleKeyDown,
