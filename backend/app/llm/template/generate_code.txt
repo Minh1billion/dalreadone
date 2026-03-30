@@ -59,6 +59,8 @@ Choose computations that reveal structure the stats summary cannot show alone:
   - Pareto check: what % of job_openings come from top 3 job titles?
   - Cross-tab: survival_class distribution within each education level
   - Conditional correlation: does salary↔risk hold within each country separately?
+  - Pie: Online vs non-Online order share when Online > 40% of total orders
+  - Pie: top product_category revenue share vs all others when top > 35%
 
   BAD computations (do not use these as standalone keys):
   - df.describe()               ← redundant with the stats already provided
@@ -98,7 +100,9 @@ Rules:
 Available types:
   "bar"         → rankings, group comparisons (≤ 15 categories)
   "line"        → change over time ONLY; labels must be time-ordered date strings
-  "pie"         → part-of-whole for exactly 2–5 categories; use sparingly
+  "pie"         → part-of-whole share; use when one category dominates (>40%) or
+                  distribution is highly concentrated; requires 2–5 categories;
+                  good for: market share, class imbalance, single-group dominance
   "scatter"     → relationship between two numeric columns
   "histogram"   → distribution shape of one numeric column
   "grouped_bar" → 2–3 metrics side-by-side per category; requires series_labels
@@ -111,11 +115,14 @@ Format rules:
 - All values must be plain Python lists - use .tolist() on numpy/pandas objects
 
 Histogram - always use pd.cut(), never hardcode bin edges:
+  WARNING: do NOT pass raw data as `data` — use pd.cut() to get binned counts.
+  `labels` must NOT be empty — it must have the same length as `data`.
 ```python
 bins   = pd.cut(df["salary"], bins=8)
 labels = bins.value_counts(sort=False).index.astype(str).tolist()
 data   = bins.value_counts(sort=False).tolist()
 ```
+  Result: labels and data both have length 8.
 
 scatter color_by - CRITICAL:
 - color_by must use a column with FEWER THAN 10 unique values
@@ -152,6 +159,12 @@ result = {{
     "_charts": [
         {{
             "type": "bar",
+            "title": "...",
+            "labels": [...],
+            "data": [...],
+        }},
+        {{
+            "type": "pie",
             "title": "...",
             "labels": [...],
             "data": [...],
