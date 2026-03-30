@@ -12,28 +12,29 @@ interface Options {
 }
 
 export function useFilePanel({ projectId, activeFileId, onSelectFile }: Options) {
-  const inputRef        = useRef<HTMLInputElement>(null)
-  const queryClient     = useQueryClient()
-  const filesQuery      = useFiles(projectId)
-  const deleteMutation  = useDeleteFile(projectId)
+  const inputRef       = useRef<HTMLInputElement>(null)
+  const queryClient    = useQueryClient()
+  const filesQuery     = useFiles(projectId)
+  const deleteMutation = useDeleteFile(projectId)
 
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [uploadError,    setUploadError]    = useState<string | null>(null)
 
   const isUploading = uploadProgress !== null
 
-  // Preview 
+  // Preview
   const previewQuery = useQuery<FilePreview>({
-    queryKey: ['file-preview', projectId, activeFileId],
-    enabled:  !!activeFileId,
-    staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
-      const { data } = await filesApi.preview(projectId, activeFileId!)
-      return data
-    },
+      queryKey: ['file-preview', projectId, activeFileId],
+      enabled:  !!activeFileId,
+      staleTime: 5 * 60 * 1000,
+      retry: 0,
+      queryFn: async () => {
+        const { data } = await filesApi.preview(projectId, activeFileId!)
+        return data
+      },
   })
 
-  // Handlers 
+  // Handlers
   function triggerFilePicker() {
     inputRef.current?.click()
   }
@@ -50,12 +51,27 @@ export function useFilePanel({ projectId, activeFileId, onSelectFile }: Options)
     try {
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest()
+
         xhr.upload.addEventListener('progress', (ev) => {
           if (ev.lengthComputable)
             setUploadProgress(Math.round((ev.loaded / ev.total) * 100))
         })
-        xhr.addEventListener('load',  () => xhr.status < 300 ? resolve() : reject(new Error(xhr.statusText)))
-        xhr.addEventListener('error', () => reject(new Error('Network error')))
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status < 300) {
+            resolve()
+          } else {
+            // Try to extract detail from FastAPI error response
+            try {
+              const body = JSON.parse(xhr.responseText)
+              reject(new Error(body?.detail ?? `Upload failed (${xhr.status})`))
+            } catch {
+              reject(new Error(`Upload failed (${xhr.status})`))
+            }
+          }
+        })
+
+        xhr.addEventListener('error', () => reject(new Error('Network error — check your connection')))
         xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')))
 
         const token   = useAuthStore.getState().accessToken
@@ -85,6 +101,15 @@ export function useFilePanel({ projectId, activeFileId, onSelectFile }: Options)
     await deleteMutation.mutateAsync(fileId)
   }
 
+  // Derive a human-readable preview error
+  const previewError: string | null = (() => {
+    if (!previewQuery.isError) return null
+    const err = previewQuery.error as any
+    return err?.response?.data?.detail
+      ?? err?.message
+      ?? 'Failed to load preview'
+  })()
+
   return {
     inputRef,
     files:          filesQuery.data ?? [],
@@ -95,8 +120,8 @@ export function useFilePanel({ projectId, activeFileId, onSelectFile }: Options)
     triggerFilePicker,
     handleFileChange,
     handleDelete,
-    //  new 
     preview:        previewQuery.data ?? null,
-    previewLoading: previewQuery.isFetching,
+    previewLoading: previewQuery.isPending,
+    previewError,
   }
 }

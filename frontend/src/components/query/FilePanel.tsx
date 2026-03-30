@@ -21,6 +21,7 @@ export default function FilePanel({ projectId, activeFileId, onSelectFile }: Pro
     handleDelete,
     preview,
     previewLoading,
+    previewError,
   } = useFilePanel({ projectId, activeFileId, onSelectFile })
 
   return (
@@ -102,8 +103,16 @@ export default function FilePanel({ projectId, activeFileId, onSelectFile }: Pro
       {/* ── Divider ── */}
       {activeFileId && <div className="flex-none my-3 border-t border-gray-100" />}
 
+      {/* ── Preview error ── */}
+      {activeFileId && previewError && !previewLoading && (
+        <div className="flex-none text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-2.5 py-2">
+          <p className="font-medium mb-0.5">Preview failed</p>
+          <p className="text-red-500">{previewError}</p>
+        </div>
+      )}
+
       {/* ── Preview ── */}
-      {activeFileId && (
+      {activeFileId && !previewError && (
         <div className="flex-1 overflow-y-auto min-h-0 pb-2">
           <FilePreviewPanel preview={preview} loading={previewLoading} />
         </div>

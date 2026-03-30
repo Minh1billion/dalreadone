@@ -32,6 +32,25 @@ def _validate_file(file: UploadFile):
             status_code=400,
             detail=f"File type not allowed. Accepted: {', '.join(ALLOWED_EXTENSIONS)}"
         )
+        
+def _validate_file_content(file: UploadFile) -> bytes:
+    """Read and validate file can actually be parsed."""
+    content = file.file.read()
+    file.file.seek(0)  # reset for subsequent read
+    
+    filename = file.filename
+    try:
+        buf = io.BytesIO(content)
+        if filename.endswith(".csv"):
+            pd.read_csv(buf, nrows=5)
+        else:
+            pd.read_excel(buf, nrows=5)
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File appears to be corrupt or unreadable: {str(e)}"
+        )
+    return content
 
 def upload_project_file(
     db: Session,
@@ -52,6 +71,7 @@ def upload_project_file(
             detail=f"Project has reached the limit of {MAX_FILES_PER_PROJECT} files"
         )
 
+    _validate_file_content(file)
     s3_key = f"projects/{project_id}/{file.filename}"
     upload_file(file.file, s3_key)
 
