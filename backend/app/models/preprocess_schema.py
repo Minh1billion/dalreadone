@@ -117,6 +117,11 @@ class PreprocessResultResponse(BaseModel):
     task_id: str
     file_id: int
     status: str
-    result_s3_key: str | None
     preview: list[dict] | None
     created_at: str
+
+
+class PreprocessConfirmResponse(BaseModel):
+    file_id: int
+    filename: str
+    project_id: int

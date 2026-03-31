@@ -8,11 +8,13 @@ from app.models.preprocess_schema import (
     PreprocessRunRequest,
     PreprocessTaskResponse,
     PreprocessResultResponse,
+    PreprocessConfirmResponse,
 )
 from app.services.preprocess_service import (
     create_preprocess_task,
     get_preprocess_task,
     run_preprocess_task,
+    confirm_preprocess_task,
 )
 
 router = APIRouter(prefix="/preprocess", tags=["preprocess"])
@@ -43,12 +45,18 @@ def get_preprocess_result(
     task_id: str,
     current_user: User = Depends(get_current_user),
 ):
-    task = get_preprocess_task(task_id, current_user.id)
-    return {
-        "task_id":        task["task_id"],
-        "file_id":        task["file_id"],
-        "status":         task["status"],
-        "result_s3_key":  task["result_s3_key"] if task["status"] == "done" else None,
-        "preview":        task["preview"]        if task["status"] == "done" else None,
-        "created_at":     task["created_at"],
-    }
+    return get_preprocess_task(task_id, current_user.id)
+
+
+@router.post("/confirm/{task_id}", response_model=PreprocessConfirmResponse)
+def confirm_preprocess(
+    task_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    file_record = confirm_preprocess_task(task_id, current_user.id, db)
+    return PreprocessConfirmResponse(
+        file_id=file_record.id,
+        filename=file_record.filename,
+        project_id=file_record.project_id,
+    )
