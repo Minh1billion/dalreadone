@@ -22,19 +22,17 @@ export function useFilePanel({ projectId, activeFileId, onSelectFile }: Options)
 
   const isUploading = uploadProgress !== null
 
-  // Preview
   const previewQuery = useQuery<FilePreview>({
-      queryKey: ['file-preview', projectId, activeFileId],
-      enabled:  !!activeFileId,
-      staleTime: 5 * 60 * 1000,
-      retry: 0,
-      queryFn: async () => {
-        const { data } = await filesApi.preview(projectId, activeFileId!)
-        return data
-      },
+    queryKey: ['file-preview', projectId, activeFileId],
+    enabled:  !!activeFileId,
+    staleTime: 5 * 60 * 1000,
+    retry: 0,
+    queryFn: async () => {
+      const { data } = await filesApi.preview(projectId, activeFileId!)
+      return data
+    },
   })
 
-  // Handlers
   function triggerFilePicker() {
     inputRef.current?.click()
   }
@@ -61,7 +59,6 @@ export function useFilePanel({ projectId, activeFileId, onSelectFile }: Options)
           if (xhr.status < 300) {
             resolve()
           } else {
-            // Try to extract detail from FastAPI error response
             try {
               const body = JSON.parse(xhr.responseText)
               reject(new Error(body?.detail ?? `Upload failed (${xhr.status})`))
@@ -95,19 +92,15 @@ export function useFilePanel({ projectId, activeFileId, onSelectFile }: Options)
     }
   }
 
-  async function handleDelete(e: React.MouseEvent, fileId: number) {
-    e.stopPropagation()
+  async function handleDelete(fileId: number) {
     if (activeFileId === fileId) onSelectFile(0)
     await deleteMutation.mutateAsync(fileId)
   }
 
-  // Derive a human-readable preview error
   const previewError: string | null = (() => {
     if (!previewQuery.isError) return null
     const err = previewQuery.error as any
-    return err?.response?.data?.detail
-      ?? err?.message
-      ?? 'Failed to load preview'
+    return err?.response?.data?.detail ?? err?.message ?? 'Failed to load preview'
   })()
 
   return {
