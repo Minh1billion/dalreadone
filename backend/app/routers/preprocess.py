@@ -1,16 +1,15 @@
+from typing import Any, Dict, List, Literal
+
 from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
-from typing import Any, Dict, List, Literal
 
 from app.core.security import get_current_user, get_db
 from app.models import User
-from app.models.schemas import FileResponse
 from app.services.preprocess_service import (
     create_preprocess_task,
     get_preprocess_task,
     run_preprocess_task,
-    save_preprocess_result,
 )
 
 router = APIRouter(prefix="/preprocess", tags=["preprocess"])
@@ -127,12 +126,3 @@ def get_task(
     user: User  = Depends(get_current_user),
 ):
     return get_preprocess_task(db, task_id=task_id, user_id=user.id)
-
-
-@router.post("/tasks/{task_id}/save", response_model=FileResponse, summary="Save preprocessed file into project")
-def save_task(
-    task_id: str,
-    db: Session = Depends(get_db),
-    user: User  = Depends(get_current_user),
-):
-    return save_preprocess_result(db, task_id=task_id, user_id=user.id)
