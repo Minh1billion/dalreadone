@@ -17,10 +17,9 @@ interface PipelineStep {
 }
 
 interface Props {
-  onRun:     (steps: StepConfig[]) => void
-  isRunning: boolean
-  disabled?: boolean
-  columns?:  string[]
+  onRun:      (steps: StepConfig[]) => void
+  isRunning:  boolean
+  disabled?:  boolean
 }
 
 let _id = 0
@@ -37,11 +36,11 @@ const DEFAULT_STEPS: PipelineStep[] = [
   makeStep('scaling'),
 ]
 
-export function PreprocessPipelineBuilder({ onRun, isRunning, disabled, columns = [] }: Props) {
-  const [steps,    setSteps]    = useState<PipelineStep[]>(DEFAULT_STEPS)
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
-  const [dragIdx,  setDragIdx]  = useState<number | null>(null)
-  const [overIdx,  setOverIdx]  = useState<number | null>(null)
+export function PreprocessPipelineBuilder({ onRun, isRunning, disabled }: Props) {
+  const [steps,     setSteps]     = useState<PipelineStep[]>(DEFAULT_STEPS)
+  const [expanded,  setExpanded]  = useState<Record<string, boolean>>({})
+  const [dragIdx,   setDragIdx]   = useState<number | null>(null)
+  const [overIdx,   setOverIdx]   = useState<number | null>(null)
 
   const usedNames = steps.map((s) => s.config.name)
   const available = STEP_META.filter((m) => !usedNames.includes(m.key))
@@ -66,7 +65,10 @@ export function PreprocessPipelineBuilder({ onRun, isRunning, disabled, columns 
     ), [])
 
   const handleDragStart = (idx: number) => setDragIdx(idx)
-  const handleDragOver  = (e: React.DragEvent, idx: number) => { e.preventDefault(); setOverIdx(idx) }
+  const handleDragOver  = (e: React.DragEvent, idx: number) => {
+    e.preventDefault()
+    setOverIdx(idx)
+  }
   const handleDrop = () => {
     if (dragIdx === null || overIdx === null || dragIdx === overIdx) {
       setDragIdx(null); setOverIdx(null); return
@@ -89,7 +91,7 @@ export function PreprocessPipelineBuilder({ onRun, isRunning, disabled, columns 
     <div className="space-y-3">
       <div className="space-y-2">
         {steps.map((step, idx) => {
-          const meta   = STEP_META.find((m) => m.key === step.config.name)!
+          const meta = STEP_META.find((m) => m.key === step.config.name)!
           const isOver = overIdx === idx && dragIdx !== null && dragIdx !== idx
           return (
             <div
@@ -106,7 +108,6 @@ export function PreprocessPipelineBuilder({ onRun, isRunning, disabled, columns 
                 index={idx}
                 enabled={step.enabled}
                 expanded={!!expanded[step.id]}
-                config={step.config}
                 onToggleEnabled={() => toggleEnabled(idx)}
                 onToggleExpanded={() => toggleExpanded(step.id)}
                 onRemove={() => removeStep(idx)}
@@ -115,28 +116,24 @@ export function PreprocessPipelineBuilder({ onRun, isRunning, disabled, columns 
                   <MissingParamsForm
                     params={step.config.params as any}
                     onChange={(p) => updateParams(idx, p)}
-                    columns={columns}
                   />
                 )}
                 {step.config.name === 'encoding' && (
                   <EncodingParamsForm
                     params={step.config.params as any}
                     onChange={(p) => updateParams(idx, p)}
-                    columns={columns}
                   />
                 )}
                 {step.config.name === 'outlier' && (
                   <OutlierParamsForm
                     params={step.config.params as any}
                     onChange={(p) => updateParams(idx, p)}
-                    columns={columns}
                   />
                 )}
                 {step.config.name === 'scaling' && (
                   <ScalingParamsForm
                     params={step.config.params as any}
                     onChange={(p) => updateParams(idx, p)}
-                    columns={columns}
                   />
                 )}
               </StepCard>

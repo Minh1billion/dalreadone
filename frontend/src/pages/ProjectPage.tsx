@@ -87,7 +87,7 @@ export default function ProjectPage() {
 
             <EDASection fileId={activeFileId} filename={activeFile?.filename} />
 
-            <PreprocessSection fileId={activeFileId} projectId={pid} columns={panel.preview?.columns} />
+            <PreprocessSection fileId={activeFileId} projectId={pid} />
 
           </div>
         )}
