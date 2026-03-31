@@ -1,43 +1,42 @@
+import io
 import uuid
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 
+import pandas as pd
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.config import Config
 from app.models import File
 from app.services.file_service import get_file_bytes, _load_dataframe
-from app.pipelines.preprocess.pipeline import (
-    run_preprocess,
-    MissingStep,
-    EncodingStep,
-    OutlierStep,
-    ScalingStep,
-    PipelineStep,
-)
+from app.storage import redis, s3
 from app.pipelines.preprocess import (
-    preprocess_01_missing as m01,
-    preprocess_02_encoding as m02,
-    preprocess_03_scaling as m03,
-    preprocess_04_outlier as m04,
+    Pipeline,
+    MissingOperation, MeanStrategy, MedianStrategy, ModeStrategy,
+    ConstantStrategy, DropRowStrategy, DropColStrategy,
+    EncodingOperation, OneHotStrategy, OrdinalStrategy, LabelStrategy,
+    OutlierOperation, IQRStrategy, ZScoreStrategy, PercentileClipStrategy,
+    ScalingOperation, MinMaxStrategy, StandardStrategy, RobustStrategy,
 )
-from app.storage import redis
-from app.core.config import Config
+from app.models.preprocess_schema import PreprocessRunRequest, OperationConfig
 
-PREPROCESS_NS = "preprocess_task"
+PREPROCESS_NS  = "preprocess_task"
 PREPROCESS_TTL = Config.PREPROCESS_TASK_TTL
+PREVIEW_ROWS   = 10
 
 
-def _task_dict(task_id: str, file_id: int, user_id: int, raw_steps: list[Dict]) -> dict[str, Any]:
+def _task_dict(task_id: str, file_id: int, user_id: int, steps_raw: list[dict]) -> dict[str, Any]:
     return {
         "task_id":    task_id,
         "file_id":    file_id,
         "user_id":    user_id,
-        "raw_steps":  raw_steps,
+        "steps":      steps_raw,
         "status":     "pending",
         "step":       None,
         "progress":   0,
-        "result":     None,
+        "result_s3_key": None,
+        "preview":    None,
         "error":      None,
         "created_at": datetime.utcnow().isoformat(),
     }
@@ -52,97 +51,70 @@ def _get_file(db: Session, file_id: int, user_id: int) -> File:
     return record
 
 
-def _build_steps(raw_steps: list[Dict]) -> list[PipelineStep]:
-    steps: list[PipelineStep] = []
-    for raw in raw_steps:
-        name = raw["name"]
-        p = raw.get("params", {})
+def _build_operation(cfg: OperationConfig):
+    cols = cfg.cols
+    s    = cfg.strategy
 
-        if name == "missing":
-            overrides = {
-                col: {k: v for k, v in cfg.items()}
-                for col, cfg in p.get("column_overrides", {}).items()
-            }
-            steps.append(MissingStep(params=m01.MissingParams(
-                num_strategy=p.get("num_strategy", "median"),
-                cat_strategy=p.get("cat_strategy", "mode"),
-                num_fill_value=p.get("num_fill_value", 0),
-                cat_fill_value=p.get("cat_fill_value", "unknown"),
-                drop_col_threshold=p.get("drop_col_threshold", 0.5),
-                drop_row_subset=p.get("drop_row_subset"),
-                column_overrides=overrides,
-            )))
+    match cfg.operation:
+        case "missing":
+            strategy = {
+                "mean":      lambda: MeanStrategy(),
+                "median":    lambda: MedianStrategy(),
+                "mode":      lambda: ModeStrategy(),
+                "constant":  lambda: ConstantStrategy(fill_value=s.fill_value),
+                "drop_row":  lambda: DropRowStrategy(),
+                "drop_col":  lambda: DropColStrategy(),
+            }[s.type]()
+            return MissingOperation(strategy, cols=cols)
 
-        elif name == "encoding":
-            col_overrides: Dict[str, m02.ColumnEncodeParams] = {
-                col: m02.ColumnEncodeParams(
-                    strategy=cfg["strategy"],
-                    ordinal_categories=cfg.get("ordinal_categories"),
-                    max_onehot_cardinality=cfg.get("max_onehot_cardinality", 20),
-                )
-                for col, cfg in p.get("column_overrides", {}).items()
-            }
-            steps.append(EncodingStep(params=m02.EncodingParams(
-                default_strategy=p.get("default_strategy", "onehot"),
-                max_onehot_cardinality=p.get("max_onehot_cardinality", 20),
-                column_overrides=col_overrides,
-                skip_cols=p.get("skip_cols"),
-            )))
+        case "encoding":
+            strategy = {
+                "onehot":  lambda: OneHotStrategy(),
+                "ordinal": lambda: OrdinalStrategy(order=s.order),
+                "label":   lambda: LabelStrategy(),
+            }[s.type]()
+            return EncodingOperation(strategy, cols=cols)
 
-        elif name == "outlier":
-            col_overrides: Dict[str, m04.ColumnOutlierParams] = {
-                col: m04.ColumnOutlierParams(
-                    strategy=cfg["strategy"],
-                    iqr_k=cfg.get("iqr_k", 1.5),
-                    winsorize_bounds=tuple(cfg.get("winsorize_bounds", [0.01, 0.99])),
-                )
-                for col, cfg in p.get("column_overrides", {}).items()
-            }
-            steps.append(OutlierStep(params=m04.OutlierParams(
-                default_strategy=p.get("default_strategy", "clip"),
-                iqr_k=p.get("iqr_k", 1.5),
-                winsorize_bounds=tuple(p.get("winsorize_bounds", [0.01, 0.99])),
-                column_overrides=col_overrides,
-                skip_cols=p.get("skip_cols"),
-            )))
+        case "outlier":
+            strategy = {
+                "iqr":             lambda: IQRStrategy(action=s.action),
+                "zscore":          lambda: ZScoreStrategy(threshold=s.threshold, action=s.action),
+                "percentile_clip": lambda: PercentileClipStrategy(lower=s.lower, upper=s.upper),
+            }[s.type]()
+            return OutlierOperation(strategy, cols=cols)
 
-        elif name == "scaling":
-            col_overrides: Dict[str, m03.ColumnScaleParams] = {
-                col: m03.ColumnScaleParams(
-                    strategy=cfg["strategy"],
-                    feature_range=tuple(cfg.get("feature_range", [0.0, 1.0])),
-                )
-                for col, cfg in p.get("column_overrides", {}).items()
-            }
-            steps.append(ScalingStep(params=m03.ScalingParams(
-                default_strategy=p.get("default_strategy", "standard"),
-                feature_range=tuple(p.get("feature_range", [0.0, 1.0])),
-                column_overrides=col_overrides,
-                skip_cols=p.get("skip_cols"),
-            )))
-
-        else:
-            raise ValueError(f"Unknown step: {name}")
-
-    return steps
+        case "scaling":
+            strategy = {
+                "minmax":   lambda: MinMaxStrategy(feature_range=s.feature_range),
+                "standard": lambda: StandardStrategy(),
+                "robust":   lambda: RobustStrategy(),
+            }[s.type]()
+            return ScalingOperation(strategy, cols=cols)
 
 
-def create_preprocess_task(
-    db: Session,
-    file_id: int,
-    user_id: int,
-    raw_steps: list[Dict],
-) -> dict:
-    _get_file(db, file_id, user_id)
-    _build_steps(raw_steps)
+def _build_pipeline(steps_raw: list[dict]) -> Pipeline:
+    from app.models.preprocess_schema import OperationConfig
+    from pydantic import TypeAdapter
 
-    task_id = str(uuid.uuid4())
-    task = _task_dict(task_id, file_id, user_id, raw_steps)
+    adapter = TypeAdapter(OperationConfig)
+    pipeline = Pipeline()
+    for raw in steps_raw:
+        cfg = adapter.validate_python(raw)
+        pipeline.add(_build_operation(cfg))
+    return pipeline
+
+
+def create_preprocess_task(db: Session, request: PreprocessRunRequest, user_id: int) -> dict:
+    _get_file(db, request.file_id, user_id)
+
+    task_id   = str(uuid.uuid4())
+    steps_raw = [step.model_dump() for step in request.steps]
+    task      = _task_dict(task_id, request.file_id, user_id, steps_raw)
     redis.set(PREPROCESS_NS, task_id, task, ttl=PREPROCESS_TTL)
     return task
 
 
-def get_preprocess_task(db: Session, task_id: str, user_id: int) -> dict:
+def get_preprocess_task(task_id: str, user_id: int) -> dict:
     task = redis.get(PREPROCESS_NS, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -163,16 +135,34 @@ def run_preprocess_task(task_id: str, db: Session) -> None:
         redis.set(PREPROCESS_NS, task_id, task, ttl=PREPROCESS_TTL)
 
     try:
+        _update("loading_file", 5)
         content, filename = get_file_bytes(db, task["file_id"], task["user_id"])
-        df = _load_dataframe(content, filename)
-        steps = _build_steps(task["raw_steps"])
+        df: pd.DataFrame  = _load_dataframe(content, filename)
 
-        _df_out, report = run_preprocess(df, source=filename, steps=steps, on_step=_update)
+        _update("building_pipeline", 15)
+        pipeline = _build_pipeline(task["steps"])
 
-        task["status"]   = "done"
-        task["step"]     = "done"
-        task["progress"] = 100
-        task["result"]   = report
+        _update("running_pipeline", 30)
+        df_out = pipeline.fit_transform(df)
+
+        _update("uploading_result", 85)
+        buf = io.BytesIO()
+        df_out.to_csv(buf, index=False)
+        buf.seek(0)
+
+        result_key = f"preprocess/{task_id}/result.csv"
+        s3.upload_file(buf, result_key)
+
+        task["status"]        = "done"
+        task["step"]          = "done"
+        task["progress"]      = 100
+        task["result_s3_key"] = result_key
+        task["preview"]       = df_out.head(PREVIEW_ROWS).to_dict(orient="records")
+        redis.set(PREPROCESS_NS, task_id, task, ttl=PREPROCESS_TTL)
+
+    except (TypeError, ValueError) as e:
+        task["status"] = "error"
+        task["error"]  = f"Pipeline config error: {e}"
         redis.set(PREPROCESS_NS, task_id, task, ttl=PREPROCESS_TTL)
 
     except Exception as e:
