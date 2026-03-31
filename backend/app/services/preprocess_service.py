@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Config
 from app.models import File
 from app.services.file_service import get_file_bytes, _load_dataframe
-from app.storage import redis, s3
+from app.storage import redis, s3_client
 from app.pipelines.preprocess import (
     Pipeline,
     MissingOperation, MeanStrategy, MedianStrategy, ModeStrategy,
