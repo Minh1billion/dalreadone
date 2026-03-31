@@ -1,4 +1,5 @@
 import uuid
+import io
 from datetime import datetime
 from typing import Any, Dict
 
@@ -22,6 +23,7 @@ from app.pipelines.preprocess import (
     preprocess_04_outlier as m04,
 )
 from app.storage import redis
+from app.storage.s3_client import upload_file as s3_upload, delete_file as s3_delete, s3
 from app.core.config import Config
 
 PREPROCESS_NS = "preprocess_task"
@@ -127,6 +129,10 @@ def _build_steps(raw_steps: list[Dict]) -> list[PipelineStep]:
     return steps
 
 
+def _temp_s3_key(task_id: str) -> str:
+    return f"preprocessed/tmp/{task_id}.csv"
+
+
 def create_preprocess_task(
     db: Session,
     file_id: int,
@@ -167,7 +173,13 @@ def run_preprocess_task(task_id: str, db: Session) -> None:
         df = _load_dataframe(content, filename)
         steps = _build_steps(task["raw_steps"])
 
-        _df_out, report = run_preprocess(df, source=filename, steps=steps, on_step=_update)
+        df_out, report = run_preprocess(df, source=filename, steps=steps, on_step=_update)
+
+        # Save df_out to temp S3 location until user confirms
+        buf = io.BytesIO()
+        df_out.to_csv(buf, index=False)
+        buf.seek(0)
+        s3_upload(buf, _temp_s3_key(task_id))
 
         task["status"]   = "done"
         task["step"]     = "done"
@@ -179,3 +191,53 @@ def run_preprocess_task(task_id: str, db: Session) -> None:
         task["status"] = "error"
         task["error"]  = str(e)
         redis.set(PREPROCESS_NS, task_id, task, ttl=PREPROCESS_TTL)
+
+
+def save_preprocess_result(db: Session, task_id: str, user_id: int) -> File:
+    task = redis.get(PREPROCESS_NS, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    if task["status"] != "done":
+        raise HTTPException(status_code=400, detail="Task is not done yet")
+
+    source_file = _get_file(db, task["file_id"], user_id)
+    project_id  = source_file.project_id
+
+    stem = source_file.filename.rsplit(".", 1)[0] if "." in source_file.filename else source_file.filename
+    new_filename = f"{stem}_preprocessed.csv"
+    dest_key     = f"projects/{project_id}/{new_filename}"
+    temp_key     = _temp_s3_key(task_id)
+
+    # Copy from temp → project folder (overwrite if exists)
+    s3.copy_object(
+        Bucket     = Config.S3_BUCKET_NAME,
+        CopySource = {"Bucket": Config.S3_BUCKET_NAME, "Key": temp_key},
+        Key        = dest_key,
+    )
+    s3_delete(temp_key)
+
+    # Upsert File record in DB
+    existing = (
+        db.query(File)
+        .filter(File.project_id == project_id, File.filename == new_filename)
+        .first()
+    )
+    if existing:
+        existing.s3_key      = dest_key
+        existing.uploaded_at = datetime.utcnow()
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    record = File(
+        filename        = new_filename,
+        s3_key          = dest_key,
+        uploaded_by_id  = user_id,
+        project_id      = project_id,
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
