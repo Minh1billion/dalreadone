@@ -7,11 +7,11 @@ from scipy.stats import chi2_contingency
 
 
 MAX_CARDINALITY = 50
-SAMPLE_SIZE     = 50_000
+SAMPLE_SIZE = 100_000
+RANDOM_SEED = 42
 
 
 def pearson_correlation(df: pd.DataFrame) -> Dict[str, float]:
-    """Pearson trên numeric columns — nhanh, dùng numpy corr matrix trực tiếp."""
     result = {}
 
     num_df = df.select_dtypes(include=np.number).dropna(how="all")
@@ -65,7 +65,6 @@ def categorical_correlation(df: pd.DataFrame) -> Dict[str, float]:
     if cat_df.shape[1] < 2:
         return result
 
-    # Lọc cột có cardinality hợp lý
     low_card_cols = [
         col for col in cat_df.columns
         if cat_df[col].nunique() <= MAX_CARDINALITY
@@ -106,9 +105,17 @@ def get_top_corr_pairs(
     return pairs[:top_n]
 
 
+def _sample_df(df: pd.DataFrame, n: int, seed: int = RANDOM_SEED) -> pd.DataFrame:
+    if len(df) <= n:
+        return df
+    return df.sample(n=n, random_state=seed).reset_index(drop=True)
+
+
 def correlation_profile(df: pd.DataFrame) -> Dict[str, Any]:
-    pearson = pearson_correlation(df)
-    cramers = categorical_correlation(df)
+    df_sampled = _sample_df(df, SAMPLE_SIZE, RANDOM_SEED)
+    
+    pearson = pearson_correlation(df_sampled)
+    cramers = categorical_correlation(df_sampled)
 
     return {
         "pearson": pearson,
