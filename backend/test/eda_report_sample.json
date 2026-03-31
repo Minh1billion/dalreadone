@@ -1,9 +1,8 @@
 {
   "eda_report": {
     "meta": {
-      "source": "data.csv",
-      "file_format": ".csv",
-      "timestamp": "2026-03-30T11:20:45.724768+00:00"
+      "source_file": "data.csv",
+      "generated_at": "2026-03-31T01:04:04.306273+00:00"
     },
     "schema": {
       "n_rows": 50,
@@ -512,34 +511,22 @@
         "order_date__product_name": 1.0,
         "order_date__status": 1.0,
         "customer_id__customer_name": 1.0,
-        "customer_id__region": 1.0192,
-        "customer_id__category": 0.5982,
-        "customer_id__product_name": 0.9567,
-        "customer_id__status": 0.6014,
-        "customer_name__region": 1.0148,
-        "customer_name__category": 0.6313,
-        "customer_name__product_name": 0.9549,
-        "customer_name__status": 0.6307,
-        "region__category": 0.4328,
-        "region__product_name": 0.9441,
-        "region__status": 0.4922,
+        "customer_id__region": 1.0,
+        "customer_id__category": 0.5796,
+        "customer_id__product_name": 0.9587,
+        "customer_id__status": 0.6049,
+        "customer_name__region": 1.0,
+        "customer_name__category": 0.6091,
+        "customer_name__product_name": 0.9587,
+        "customer_name__status": 0.603,
+        "region__category": 0.3471,
+        "region__product_name": 0.9519,
+        "region__status": 0.193,
         "category__product_name": 1.0,
-        "category__status": 0.4553,
-        "product_name__status": 0.9798
+        "category__status": 0.2527,
+        "product_name__status": 0.9296
       },
       "top_corr_pairs": [
-        {
-          "col_a": "customer_id",
-          "col_b": "region",
-          "method": "cramers_v",
-          "value": 1.0192
-        },
-        {
-          "col_a": "customer_name",
-          "col_b": "region",
-          "method": "cramers_v",
-          "value": 1.0148
-        },
         {
           "col_a": "order_date",
           "col_b": "customer_id",
@@ -555,6 +542,18 @@
         {
           "col_a": "order_date",
           "col_b": "region",
+          "method": "cramers_v",
+          "value": 1.0
+        },
+        {
+          "col_a": "order_date",
+          "col_b": "category",
+          "method": "cramers_v",
+          "value": 1.0
+        },
+        {
+          "col_a": "order_date",
+          "col_b": "product_name",
           "method": "cramers_v",
           "value": 1.0
         }
@@ -610,7 +609,13 @@
             "count": 5
           }
         ],
-        "outlier_rows_idx": []
+        "outlier_summary": {
+          "count": 0,
+          "pct": 0.0,
+          "lower_fence": 976.5,
+          "upper_fence": 1074.5,
+          "preview_idx": []
+        }
       },
       "quantity": {
         "normality_test": {
@@ -661,10 +666,16 @@
             "count": 2
           }
         ],
-        "outlier_rows_idx": [
-          32,
-          40
-        ]
+        "outlier_summary": {
+          "count": 2,
+          "pct": 4.0,
+          "lower_fence": -0.5,
+          "upper_fence": 3.5,
+          "preview_idx": [
+            32,
+            40
+          ]
+        }
       },
       "unit_price": {
         "normality_test": {
@@ -715,14 +726,20 @@
             "count": 1
           }
         ],
-        "outlier_rows_idx": [
-          14,
-          21,
-          27,
-          34,
-          39,
-          49
-        ]
+        "outlier_summary": {
+          "count": 6,
+          "pct": 12.0,
+          "lower_fence": -1053750.0,
+          "upper_fence": 2176250.0,
+          "preview_idx": [
+            14,
+            21,
+            27,
+            34,
+            39,
+            49
+          ]
+        }
       },
       "discount": {
         "normality_test": {
@@ -773,15 +790,21 @@
             "count": 7
           }
         ],
-        "outlier_rows_idx": []
+        "outlier_summary": {
+          "count": 0,
+          "pct": 0.0,
+          "lower_fence": -0.2063,
+          "upper_fence": 0.3438,
+          "preview_idx": []
+        }
       }
     },
     "data_quality_score": {
       "completeness": 0.9873,
-      "consistency": 0.96,
+      "consistency": 1.0,
       "uniqueness": 1.0,
       "timeliness": 1.0,
-      "overall_score": 0.9856,
+      "overall_score": 0.9956,
       "flags": [
         "high null in 'region' (8.0%)"
       ]

@@ -5,6 +5,15 @@ from typing import Any, Callable
 
 import pandas as pd
 
+from app.pipelines.eda import (
+    eda_02_schema_profile as m02,
+    eda_03_missing_duplicates as m03,
+    eda_04_stat_analysis as m04,
+    eda_05_datetime_analysis as m05,
+    eda_06_correlation_measure as m06,
+    eda_07_distribution_analysis as m07,
+    eda_08_quality_score as m08,
+)
 
 def _load(filename: str):
     p = Path(__file__).parent / filename
@@ -20,13 +29,6 @@ def run_eda(
     output_path: str | None = None,
     on_step: Callable[[str, int], None] | None = None,
 ) -> dict[str, Any]:
-    m02 = _load("eda_02_schema_profile.py")
-    m03 = _load("eda_03_missing_duplicates.py")
-    m04 = _load("eda_04_stat_analysis.py")
-    m05 = _load("eda_05_datetime_analysis.py")
-    m06 = _load("eda_06_correlation_measure.py")
-    m07 = _load("eda_07_distribution_analysis.py")
-    m08 = _load("eda_08_quality_score.py")
 
     def _step(name: str, progress: int):
         if on_step:
@@ -79,8 +81,8 @@ if __name__ == "__main__":
     import sys
     from app.pipelines.eda.eda_01_ingest import read_data
 
-    data_path = sys.argv[1] if len(sys.argv) > 1 else "backend\\test\\data.csv"
-    output_path = sys.argv[2] if len(sys.argv) > 2 else "eda_report.json"
+    data_path = sys.argv[1] if len(sys.argv) > 1 else "test\\data.csv"
+    output_path = sys.argv[2] if len(sys.argv) > 2 else "test\\eda_report_sample.json"
 
     df, meta = read_data(data_path)
     run_eda(df, source=meta["source"], output_path=output_path)

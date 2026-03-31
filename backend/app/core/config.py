@@ -7,6 +7,12 @@ class Config:
     # LLM
     GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
     MODEL_ID = os.environ.get("MODEL_ID")
+    
+    DA_TEMPERATURE = float(os.environ.get("DA_TEMPERATURE", 0.2))
+    DA_MAX_TOKENS = int(os.environ.get("DA_MAX_TOKENS", 8192))
+    DA_CHAIN_RETRY_MAX = int(os.environ.get("DA_CHAIN_RETRY_MAX", 2))
+    DA_TASK_TTL = int(os.environ.get("DA_TASK_TTL", 3600))
+    DA_CODE_EXEC_TIMEOUT = int(os.environ.get("DA_CODE_EXEC_TIMEOUT", 30))
 
     # S3 Bucket
     AWS_REGION = os.environ.get("AWS_REGION")
@@ -30,7 +36,7 @@ class Config:
     REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
     REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
     REDIS_URL  = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
-    EDA_TASK_TTL = int(os.environ.get("EDA_TASK_TTL", 3600))  # seconds
+    EDA_TASK_TTL = int(os.environ.get("EDA_TASK_TTL", 3600))
 
     # JWT
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")

@@ -10,7 +10,7 @@ def is_datetime_column(series: pd.Series, threshold: float = 0.8) -> bool:
     if not pd.api.types.is_object_dtype(series):
         return False
 
-    parsed = pd.to_datetime(series, errors="coerce")
+    parsed = pd.to_datetime(series, errors="coerce", format="mixed", dayfirst=False)
     success_ratio = parsed.notna().mean()
 
     return success_ratio >= threshold
