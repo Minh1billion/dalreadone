@@ -8,9 +8,10 @@ import { PreprocessResultDashboard } from './PreprocessResultDashboard'
 interface Props {
   fileId:    number | null
   projectId: number
+  columns?:  string[]
 }
 
-export function PreprocessSection({ fileId, projectId }: Props) {
+export function PreprocessSection({ fileId, projectId, columns = [] }: Props) {
   const pp = usePreprocess(fileId)
   const [lastSteps, setLastSteps] = useState<StepName[]>([])
 
@@ -45,6 +46,7 @@ export function PreprocessSection({ fileId, projectId }: Props) {
             onRun={handleRun}
             isRunning={pp.starting}
             disabled={!fileId}
+            columns={columns}
           />
         )}
 

@@ -10,13 +10,12 @@ import {
   OUTLIER_STRATEGIES,
   SCALE_STRATEGIES,
 } from './PreprocessTypes'
-import { SelectRow, NumberRow, TextRow, RangeRow, ParamSection } from './ParamRow'
-
-// ─── Missing ────────────────────────────────────────────────────────────────
+import { SelectRow, NumberRow, TextRow, RangeRow, ParamSection, TagInputRow } from './ParamRow'
 
 interface MissingFormProps {
   params:   MissingStepParams
   onChange: (p: MissingStepParams) => void
+  columns?: string[]
 }
 
 export function MissingParamsForm({ params, onChange }: MissingFormProps) {
@@ -66,15 +65,22 @@ export function MissingParamsForm({ params, onChange }: MissingFormProps) {
   )
 }
 
-// ─── Encoding ────────────────────────────────────────────────────────────────
-
 interface EncodingFormProps {
   params:   EncodingStepParams
   onChange: (p: EncodingStepParams) => void
+  columns?: string[]
 }
 
-export function EncodingParamsForm({ params, onChange }: EncodingFormProps) {
+export function EncodingParamsForm({ params, onChange, columns = [] }: EncodingFormProps) {
   const set = (patch: Partial<EncodingStepParams>) => onChange({ ...params, ...patch })
+
+  const includeCols = columns.filter((c) => !(params.skip_cols ?? []).includes(c))
+
+  const handleIncludeChange = (selected: string[]) => {
+    if (columns.length === 0) return
+    set({ skip_cols: columns.filter((c) => !selected.includes(c)) })
+  }
+
   return (
     <div className="space-y-4">
       <ParamSection title="Default strategy">
@@ -93,27 +99,31 @@ export function EncodingParamsForm({ params, onChange }: EncodingFormProps) {
         />
       </ParamSection>
 
-      <ParamSection title="Skip columns">
-        <TextRow
-          label="Skip cols (comma-separated)"
-          value={(params.skip_cols ?? []).join(', ')}
-          onChange={(v) => set({ skip_cols: v.split(',').map((s) => s.trim()).filter(Boolean) })}
-          hint="These columns will not be encoded"
+      <ParamSection title="Encode columns">
+        <TagInputRow
+          label="Include cols"
+          value={columns.length > 0 ? includeCols : []}
+          onChange={handleIncludeChange}
+          suggestions={columns}
+          hint={
+            columns.length > 0
+              ? 'Only these columns will be encoded'
+              : 'No columns available — type manually to skip specific cols'
+          }
         />
       </ParamSection>
     </div>
   )
 }
 
-// ─── Outlier ────────────────────────────────────────────────────────────────
-
 interface OutlierFormProps {
   params:   OutlierStepParams
   onChange: (p: OutlierStepParams) => void
+  columns?: string[]
 }
 
-export function OutlierParamsForm({ params, onChange }: OutlierFormProps) {
-  const set = (patch: Partial<OutlierStepParams>) => onChange({ ...params, ...patch })
+export function OutlierParamsForm({ params, onChange, columns = [] }: OutlierFormProps) {
+  const set    = (patch: Partial<OutlierStepParams>) => onChange({ ...params, ...patch })
   const bounds = params.winsorize_bounds ?? [0.01, 0.99]
   return (
     <div className="space-y-4">
@@ -146,25 +156,26 @@ export function OutlierParamsForm({ params, onChange }: OutlierFormProps) {
       </ParamSection>
 
       <ParamSection title="Skip columns">
-        <TextRow
-          label="Skip cols (comma-separated)"
-          value={(params.skip_cols ?? []).join(', ')}
-          onChange={(v) => set({ skip_cols: v.split(',').map((s) => s.trim()).filter(Boolean) })}
+        <TagInputRow
+          label="Skip cols"
+          value={params.skip_cols ?? []}
+          onChange={(v) => set({ skip_cols: v })}
+          suggestions={columns}
+          hint="These columns will not be processed"
         />
       </ParamSection>
     </div>
   )
 }
 
-// ─── Scaling ────────────────────────────────────────────────────────────────
-
 interface ScalingFormProps {
   params:   ScalingStepParams
   onChange: (p: ScalingStepParams) => void
+  columns?: string[]
 }
 
-export function ScalingParamsForm({ params, onChange }: ScalingFormProps) {
-  const set = (patch: Partial<ScalingStepParams>) => onChange({ ...params, ...patch })
+export function ScalingParamsForm({ params, onChange, columns = [] }: ScalingFormProps) {
+  const set   = (patch: Partial<ScalingStepParams>) => onChange({ ...params, ...patch })
   const range = params.feature_range ?? [0.0, 1.0]
   return (
     <div className="space-y-4">
@@ -190,10 +201,12 @@ export function ScalingParamsForm({ params, onChange }: ScalingFormProps) {
       </ParamSection>
 
       <ParamSection title="Skip columns">
-        <TextRow
-          label="Skip cols (comma-separated)"
-          value={(params.skip_cols ?? []).join(', ')}
-          onChange={(v) => set({ skip_cols: v.split(',').map((s) => s.trim()).filter(Boolean) })}
+        <TagInputRow
+          label="Skip cols"
+          value={params.skip_cols ?? []}
+          onChange={(v) => set({ skip_cols: v })}
+          suggestions={columns}
+          hint="These columns will not be scaled"
         />
       </ParamSection>
     </div>
