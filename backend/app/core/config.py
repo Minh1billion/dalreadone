@@ -37,6 +37,7 @@ class Config:
     REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
     REDIS_URL  = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
     EDA_TASK_TTL = int(os.environ.get("EDA_TASK_TTL", 3600))
+    PREPROCESS_TASK_TTL = int(os.environ.get("PREPROCESS_TASK_TTL", 3600))
 
     # JWT
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")

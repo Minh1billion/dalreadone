@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routers import auth, files, projects, oauth, history, settings, eda
+from app.routers import auth, files, projects, oauth, history, settings, eda, preprocess
 from app.db.session import engine
 from app.models import Base
 
@@ -21,6 +21,7 @@ app.include_router(settings.router, prefix="/api")
 
 # app.include_router(query.router, prefix="/api")
 app.include_router(eda.router, prefix="/api")
+app.include_router(preprocess.router, prefix="/api")
 
 @app.get("/")
 def root():
