@@ -151,7 +151,7 @@ def run_preprocess_task(task_id: str, db: Session) -> None:
         buf.seek(0)
 
         result_key = f"preprocess/{task_id}/result.csv"
-        s3.upload_file(buf, result_key)
+        s3_client.upload_file(buf, result_key)
 
         task["status"]        = "done"
         task["step"]          = "done"
