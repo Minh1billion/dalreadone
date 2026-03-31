@@ -1,0 +1,425 @@
+[
+  {
+    "doc_id": "DOC-0000",
+    "title": "Article 0: Introduction",
+    "author": "Ms. C. Tran",
+    "published": "2024-11-19",
+    "tags": [
+      "cloud",
+      "python",
+      "data"
+    ],
+    "body": "Deep learning models require large amounts of labeled training data. Natural language processing enables computers to understand human language. Visualization helps stakeholders understand complex patterns quickly. Pandas provides powerful tools for tabular data manipulation. Pandas provides powerful tools for tabular data manipulation. Visualization helps stakeholders understand complex patterns quickly. Machine learning is transforming the way we analyze data.",
+    "word_count": 58,
+    "rating": 4.9
+  },
+  {
+    "doc_id": "DOC-0001",
+    "title": "Article 1: Overview",
+    "author": "Dr. A. Nguyen",
+    "published": "2024-09-10",
+    "tags": [
+      "viz",
+      "nlp",
+      "python"
+    ],
+    "body": "Exploratory data analysis is a critical first step in any data science project. Machine learning is transforming the way we analyze data. Machine learning is transforming the way we analyze data. Natural language processing enables computers to understand human language. Deep learning models require large amounts of labeled training data.",
+    "word_count": 50,
+    "rating": 3.9
+  },
+  {
+    "doc_id": "DOC-0002",
+    "title": "Article 2: Deep Dive",
+    "author": "Prof. B. Le",
+    "published": "2023-07-05",
+    "tags": [
+      "viz",
+      "data"
+    ],
+    "body": "Version control is essential for reproducible data science workflows. Exploratory data analysis is a critical first step in any data science project. Deep learning models require large amounts of labeled training data. Cloud platforms offer scalable infrastructure for big data processing.",
+    "word_count": 41,
+    "rating": 3.2
+  },
+  {
+    "doc_id": "DOC-0003",
+    "title": "Article 3: Advanced Topics",
+    "author": "Prof. B. Le",
+    "published": "2023-06-19",
+    "tags": [
+      "viz",
+      "nlp",
+      "data",
+      "cloud"
+    ],
+    "body": "Deep learning models require large amounts of labeled training data. Visualization helps stakeholders understand complex patterns quickly. Pandas provides powerful tools for tabular data manipulation. Deep learning models require large amounts of labeled training data.",
+    "word_count": 35,
+    "rating": 2.4
+  },
+  {
+    "doc_id": "DOC-0004",
+    "title": "Article 4: Deep Dive",
+    "author": "Dr. A. Nguyen",
+    "published": "2024-06-30",
+    "tags": [
+      "nlp",
+      "python",
+      "viz"
+    ],
+    "body": "Version control is essential for reproducible data science workflows. Feature engineering can significantly improve model performance. Deep learning models require large amounts of labeled training data. Version control is essential for reproducible data science workflows. Visualization helps stakeholders understand complex patterns quickly.",
+    "word_count": 42,
+    "rating": 2.6
+  },
+  {
+    "doc_id": "DOC-0005",
+    "title": "Article 5: Introduction",
+    "author": "Dr. A. Nguyen",
+    "published": "2024-10-14",
+    "tags": [
+      "cloud",
+      "ml",
+      "python"
+    ],
+    "body": "Exploratory data analysis is a critical first step in any data science project. Deep learning models require large amounts of labeled training data. Pandas provides powerful tools for tabular data manipulation. Machine learning is transforming the way we analyze data. Exploratory data analysis is a critical first step in any data science project. Deep learning models require large amounts of labeled training data.",
+    "word_count": 63,
+    "rating": 3.2
+  },
+  {
+    "doc_id": "DOC-0006",
+    "title": "Article 6: Deep Dive",
+    "author": "Dr. A. Nguyen",
+    "published": "2024-01-02",
+    "tags": [
+      "data",
+      "viz",
+      "nlp"
+    ],
+    "body": "Feature engineering can significantly improve model performance. Machine learning is transforming the way we analyze data. Exploratory data analysis is a critical first step in any data science project. Version control is essential for reproducible data science workflows. Exploratory data analysis is a critical first step in any data science project. Feature engineering can significantly improve model performance. Pandas provides powerful tools for tabular data manipulation.",
+    "word_count": 66,
+    "rating": 3.3
+  },
+  {
+    "doc_id": "DOC-0007",
+    "title": "Article 7: Introduction",
+    "author": "Ms. C. Tran",
+    "published": "2024-09-15",
+    "tags": [
+      "nlp",
+      "ml",
+      "cloud"
+    ],
+    "body": "Version control is essential for reproducible data science workflows. Feature engineering can significantly improve model performance. Data pipelines must handle missing values and outliers gracefully. Pandas provides powerful tools for tabular data manipulation. Feature engineering can significantly improve model performance. Data pipelines must handle missing values and outliers gracefully.",
+    "word_count": 49,
+    "rating": 2.0
+  },
+  {
+    "doc_id": "DOC-0008",
+    "title": "Article 8: Introduction",
+    "author": "Ms. C. Tran",
+    "published": "2023-07-25",
+    "tags": [
+      "viz",
+      "ml",
+      "data"
+    ],
+    "body": "Exploratory data analysis is a critical first step in any data science project. Data pipelines must handle missing values and outliers gracefully. Feature engineering can significantly improve model performance. Exploratory data analysis is a critical first step in any data science project. Version control is essential for reproducible data science workflows. Machine learning is transforming the way we analyze data. Pandas provides powerful tools for tabular data manipulation.",
+    "word_count": 68,
+    "rating": 1.1
+  },
+  {
+    "doc_id": "DOC-0009",
+    "title": "Article 9: Introduction",
+    "author": "Ms. C. Tran",
+    "published": "2024-09-01",
+    "tags": [
+      "viz",
+      "nlp"
+    ],
+    "body": "Cloud platforms offer scalable infrastructure for big data processing. Visualization helps stakeholders understand complex patterns quickly. Visualization helps stakeholders understand complex patterns quickly. Deep learning models require large amounts of labeled training data. Deep learning models require large amounts of labeled training data. Visualization helps stakeholders understand complex patterns quickly.",
+    "word_count": 50,
+    "rating": 4.1
+  },
+  {
+    "doc_id": "DOC-0010",
+    "title": "Article 10: Deep Dive",
+    "author": "Ms. C. Tran",
+    "published": "2024-03-14",
+    "tags": [
+      "data",
+      "nlp",
+      "cloud",
+      "viz"
+    ],
+    "body": "Machine learning is transforming the way we analyze data. Feature engineering can significantly improve model performance. Natural language processing enables computers to understand human language. Data pipelines must handle missing values and outliers gracefully.",
+    "word_count": 34,
+    "rating": 4.9
+  },
+  {
+    "doc_id": "DOC-0011",
+    "title": "Article 11: Overview",
+    "author": "Dr. A. Nguyen",
+    "published": "2023-09-29",
+    "tags": [
+      "nlp",
+      "cloud",
+      "python",
+      "viz"
+    ],
+    "body": "Natural language processing enables computers to understand human language. Version control is essential for reproducible data science workflows. Data pipelines must handle missing values and outliers gracefully. Deep learning models require large amounts of labeled training data. Data pipelines must handle missing values and outliers gracefully. Version control is essential for reproducible data science workflows.",
+    "word_count": 55,
+    "rating": 2.3
+  },
+  {
+    "doc_id": "DOC-0012",
+    "title": "Article 12: Overview",
+    "author": "Prof. B. Le",
+    "published": "2023-05-15",
+    "tags": [
+      "cloud",
+      "viz",
+      "python"
+    ],
+    "body": "Feature engineering can significantly improve model performance. Natural language processing enables computers to understand human language. Pandas provides powerful tools for tabular data manipulation. Visualization helps stakeholders understand complex patterns quickly. Machine learning is transforming the way we analyze data. Deep learning models require large amounts of labeled training data. Machine learning is transforming the way we analyze data.",
+    "word_count": 59,
+    "rating": 1.2
+  },
+  {
+    "doc_id": "DOC-0013",
+    "title": "Article 13: Overview",
+    "author": "Dr. A. Nguyen",
+    "published": "2024-02-04",
+    "tags": [
+      "data",
+      "python"
+    ],
+    "body": "Data pipelines must handle missing values and outliers gracefully. Cloud platforms offer scalable infrastructure for big data processing. Deep learning models require large amounts of labeled training data. Version control is essential for reproducible data science workflows.",
+    "word_count": 37,
+    "rating": 1.5
+  },
+  {
+    "doc_id": "DOC-0014",
+    "title": "Article 14: Introduction",
+    "author": "Dr. A. Nguyen",
+    "published": "2024-06-18",
+    "tags": [
+      "ml",
+      "cloud",
+      "viz",
+      "nlp"
+    ],
+    "body": "Cloud platforms offer scalable infrastructure for big data processing. Cloud platforms offer scalable infrastructure for big data processing. Feature engineering can significantly improve model performance. Deep learning models require large amounts of labeled training data.",
+    "word_count": 35,
+    "rating": 3.1
+  },
+  {
+    "doc_id": "DOC-0015",
+    "title": "Article 15: Overview",
+    "author": "Ms. C. Tran",
+    "published": "2023-04-18",
+    "tags": [
+      "data",
+      "viz",
+      "python",
+      "nlp"
+    ],
+    "body": "Deep learning models require large amounts of labeled training data. Deep learning models require large amounts of labeled training data. Visualization helps stakeholders understand complex patterns quickly. Feature engineering can significantly improve model performance. Feature engineering can significantly improve model performance. Cloud platforms offer scalable infrastructure for big data processing. Visualization helps stakeholders understand complex patterns quickly.",
+    "word_count": 57,
+    "rating": 3.9
+  },
+  {
+    "doc_id": "DOC-0016",
+    "title": "Article 16: Introduction",
+    "author": "Prof. B. Le",
+    "published": "2024-09-14",
+    "tags": [
+      "python",
+      "ml",
+      "data",
+      "nlp"
+    ],
+    "body": "Data pipelines must handle missing values and outliers gracefully. Data pipelines must handle missing values and outliers gracefully. Version control is essential for reproducible data science workflows. Natural language processing enables computers to understand human language. Machine learning is transforming the way we analyze data. Deep learning models require large amounts of labeled training data.",
+    "word_count": 55,
+    "rating": 4.0
+  },
+  {
+    "doc_id": "DOC-0017",
+    "title": "Article 17: Introduction",
+    "author": "Ms. C. Tran",
+    "published": "2023-03-04",
+    "tags": [
+      "viz",
+      "ml",
+      "python",
+      "data"
+    ],
+    "body": "Data pipelines must handle missing values and outliers gracefully. Feature engineering can significantly improve model performance. Visualization helps stakeholders understand complex patterns quickly. Cloud platforms offer scalable infrastructure for big data processing. Exploratory data analysis is a critical first step in any data science project.",
+    "word_count": 45,
+    "rating": 3.4
+  },
+  {
+    "doc_id": "DOC-0018",
+    "title": "Article 18: Advanced Topics",
+    "author": "Prof. B. Le",
+    "published": "2023-01-03",
+    "tags": [
+      "cloud",
+      "nlp",
+      "python",
+      "data"
+    ],
+    "body": "Exploratory data analysis is a critical first step in any data science project. Feature engineering can significantly improve model performance. Exploratory data analysis is a critical first step in any data science project. Version control is essential for reproducible data science workflows.",
+    "word_count": 42,
+    "rating": 2.8
+  },
+  {
+    "doc_id": "DOC-0019",
+    "title": "Article 19: Overview",
+    "author": "Ms. C. Tran",
+    "published": "2023-03-25",
+    "tags": [
+      "viz",
+      "data"
+    ],
+    "body": "Visualization helps stakeholders understand complex patterns quickly. Feature engineering can significantly improve model performance. Feature engineering can significantly improve model performance. Feature engineering can significantly improve model performance. Machine learning is transforming the way we analyze data. Natural language processing enables computers to understand human language. Exploratory data analysis is a critical first step in any data science project.",
+    "word_count": 59,
+    "rating": 1.0
+  },
+  {
+    "doc_id": "DOC-0020",
+    "title": "Article 20: Introduction",
+    "author": "Prof. B. Le",
+    "published": "2024-01-12",
+    "tags": [
+      "data",
+      "ml"
+    ],
+    "body": "Exploratory data analysis is a critical first step in any data science project. Pandas provides powerful tools for tabular data manipulation. Cloud platforms offer scalable infrastructure for big data processing. Pandas provides powerful tools for tabular data manipulation. Cloud platforms offer scalable infrastructure for big data processing. Feature engineering can significantly improve model performance.",
+    "word_count": 54,
+    "rating": 4.9
+  },
+  {
+    "doc_id": "DOC-0021",
+    "title": "Article 21: Deep Dive",
+    "author": "Dr. A. Nguyen",
+    "published": "2023-10-05",
+    "tags": [
+      "nlp",
+      "data",
+      "viz",
+      "ml"
+    ],
+    "body": "Version control is essential for reproducible data science workflows. Data pipelines must handle missing values and outliers gracefully. Visualization helps stakeholders understand complex patterns quickly. Cloud platforms offer scalable infrastructure for big data processing. Pandas provides powerful tools for tabular data manipulation. Machine learning is transforming the way we analyze data.",
+    "word_count": 51,
+    "rating": 2.0
+  },
+  {
+    "doc_id": "DOC-0022",
+    "title": "Article 22: Deep Dive",
+    "author": "Ms. C. Tran",
+    "published": "2023-12-23",
+    "tags": [
+      "viz",
+      "python",
+      "data"
+    ],
+    "body": "Data pipelines must handle missing values and outliers gracefully. Machine learning is transforming the way we analyze data. Pandas provides powerful tools for tabular data manipulation. Exploratory data analysis is a critical first step in any data science project. Version control is essential for reproducible data science workflows. Pandas provides powerful tools for tabular data manipulation. Data pipelines must handle missing values and outliers gracefully.",
+    "word_count": 65,
+    "rating": 1.1
+  },
+  {
+    "doc_id": "DOC-0023",
+    "title": "Article 23: Deep Dive",
+    "author": "Dr. A. Nguyen",
+    "published": "2023-01-25",
+    "tags": [
+      "data",
+      "cloud",
+      "python"
+    ],
+    "body": "Natural language processing enables computers to understand human language. Machine learning is transforming the way we analyze data. Visualization helps stakeholders understand complex patterns quickly. Pandas provides powerful tools for tabular data manipulation. Pandas provides powerful tools for tabular data manipulation. Exploratory data analysis is a critical first step in any data science project.",
+    "word_count": 54,
+    "rating": 4.9
+  },
+  {
+    "doc_id": "DOC-0024",
+    "title": "Article 24: Introduction",
+    "author": "Ms. C. Tran",
+    "published": "2024-07-18",
+    "tags": [
+      "cloud",
+      "python",
+      "data"
+    ],
+    "body": "Cloud platforms offer scalable infrastructure for big data processing. Cloud platforms offer scalable infrastructure for big data processing. Exploratory data analysis is a critical first step in any data science project. Version control is essential for reproducible data science workflows. Machine learning is transforming the way we analyze data. Pandas provides powerful tools for tabular data manipulation.",
+    "word_count": 57,
+    "rating": 2.9
+  },
+  {
+    "doc_id": "DOC-0025",
+    "title": "Article 25: Overview",
+    "author": "Dr. A. Nguyen",
+    "published": "2023-05-29",
+    "tags": [
+      "nlp",
+      "viz",
+      "data"
+    ],
+    "body": "Machine learning is transforming the way we analyze data. Cloud platforms offer scalable infrastructure for big data processing. Feature engineering can significantly improve model performance. Cloud platforms offer scalable infrastructure for big data processing. Cloud platforms offer scalable infrastructure for big data processing. Natural language processing enables computers to understand human language.",
+    "word_count": 52,
+    "rating": 3.4
+  },
+  {
+    "doc_id": "DOC-0026",
+    "title": "Article 26: Overview",
+    "author": "Dr. A. Nguyen",
+    "published": "2024-04-10",
+    "tags": [
+      "data",
+      "python",
+      "ml"
+    ],
+    "body": "Visualization helps stakeholders understand complex patterns quickly. Natural language processing enables computers to understand human language. Exploratory data analysis is a critical first step in any data science project. Machine learning is transforming the way we analyze data.",
+    "word_count": 38,
+    "rating": 4.6
+  },
+  {
+    "doc_id": "DOC-0027",
+    "title": "Article 27: Advanced Topics",
+    "author": "Dr. A. Nguyen",
+    "published": "2024-02-26",
+    "tags": [
+      "nlp",
+      "ml"
+    ],
+    "body": "Data pipelines must handle missing values and outliers gracefully. Pandas provides powerful tools for tabular data manipulation. Visualization helps stakeholders understand complex patterns quickly. Feature engineering can significantly improve model performance. Exploratory data analysis is a critical first step in any data science project. Pandas provides powerful tools for tabular data manipulation. Natural language processing enables computers to understand human language.",
+    "word_count": 61,
+    "rating": 1.8
+  },
+  {
+    "doc_id": "DOC-0028",
+    "title": "Article 28: Advanced Topics",
+    "author": "Dr. A. Nguyen",
+    "published": "2024-01-08",
+    "tags": [
+      "viz",
+      "ml"
+    ],
+    "body": "Cloud platforms offer scalable infrastructure for big data processing. Natural language processing enables computers to understand human language. Pandas provides powerful tools for tabular data manipulation. Pandas provides powerful tools for tabular data manipulation. Exploratory data analysis is a critical first step in any data science project.",
+    "word_count": 47,
+    "rating": 3.5
+  },
+  {
+    "doc_id": "DOC-0029",
+    "title": "Article 29: Introduction",
+    "author": "Dr. A. Nguyen",
+    "published": "2024-07-18",
+    "tags": [
+      "python",
+      "data",
+      "viz",
+      "ml"
+    ],
+    "body": "Natural language processing enables computers to understand human language. Cloud platforms offer scalable infrastructure for big data processing. Data pipelines must handle missing values and outliers gracefully. Version control is essential for reproducible data science workflows.",
+    "word_count": 36,
+    "rating": 4.5
+  }
+]

@@ -6,7 +6,9 @@ from datetime import datetime
 
 import pandas as pd
 import numpy as np
+import math
 import io
+import json
 
 from app.models import File, Project
 from app.storage.s3_client import upload_file, delete_file, get_file_bytes as s3_get_file_bytes
@@ -43,8 +45,14 @@ def _validate_file_content(file: UploadFile) -> bytes:
         buf = io.BytesIO(content)
         if filename.endswith(".csv"):
             pd.read_csv(buf, nrows=5)
-        else:
+        elif filename.endswith((".xlsx", ".xls")):
             pd.read_excel(buf, nrows=5)
+        elif filename.endswith(".json"):
+            pd.read_json(buf)
+        elif filename.endswith(".jsonl"):
+            pd.read_json(buf, lines=True, nrows=5)
+        elif filename.endswith(".parquet"):
+            pd.read_parquet(buf)
     except Exception as e:
         raise HTTPException(
             status_code=400,
@@ -53,11 +61,64 @@ def _validate_file_content(file: UploadFile) -> bytes:
     return content
 
 
+def _load_json_dataframe(buf: io.BytesIO) -> pd.DataFrame:
+    raw = json.load(buf)
+    if isinstance(raw, list):
+        df = pd.json_normalize(raw)
+    elif isinstance(raw, dict):
+        for val in raw.values():
+            if isinstance(val, list):
+                df = pd.json_normalize(val)
+                break
+        else:
+            df = pd.json_normalize([raw])
+    else:
+        raise ValueError("JSON root must be an array or object")
+
+    for col in df.columns:
+        if df[col].apply(lambda x: isinstance(x, list)).any():
+            df[col] = df[col].apply(
+                lambda x: json.dumps(x, ensure_ascii=False) if isinstance(x, list) else x
+            )
+    return df
+
+
 def _load_dataframe(content: bytes, filename: str) -> pd.DataFrame:
     buf = io.BytesIO(content)
     if filename.endswith(".csv"):
         return pd.read_csv(buf, low_memory=False)
-    return pd.read_excel(buf)
+    elif filename.endswith((".xlsx", ".xls")):
+        return pd.read_excel(buf)
+    elif filename.endswith(".json"):
+        return _load_json_dataframe(buf)
+    elif filename.endswith(".jsonl"):
+        records = [json.loads(line) for line in buf.read().decode().splitlines() if line.strip()]
+        df = pd.json_normalize(records)
+        df = df.dropna(axis=1, how="all")
+        for col in df.columns:
+            if df[col].apply(lambda x: isinstance(x, list)).any():
+                df[col] = df[col].apply(
+                    lambda x: json.dumps(x, ensure_ascii=False) if isinstance(x, list) else x
+                )
+        return df
+    elif filename.endswith(".parquet"):
+        return pd.read_parquet(buf)
+    raise ValueError(f"Unsupported file format: {filename}")
+
+
+def _sanitize_rows(rows: list[dict]) -> list[dict]:
+    def _clean(v):
+        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+            return None
+        if isinstance(v, np.integer):
+            return int(v)
+        if isinstance(v, np.floating):
+            f = float(v)
+            return None if (math.isnan(f) or math.isinf(f)) else f
+        if isinstance(v, np.bool_):
+            return bool(v)
+        return v
+    return [{k: _clean(v) for k, v in row.items()} for row in rows]
 
 
 def upload_project_file(
@@ -139,12 +200,12 @@ def get_file_preview(db: Session, file_id: int, user_id: int, n_rows: int = 100)
     content, filename = get_file_bytes(db, file_id, user_id)
     df = _load_dataframe(content, filename)
 
-    preview_df = df.head(n_rows).replace({np.nan: None})
+    rows = _sanitize_rows(df.head(n_rows).to_dict(orient="records"))
 
     return {
         "filename": filename,
         "n_rows": len(df),
         "n_cols": len(df.columns),
         "columns": df.columns.tolist(),
-        "rows": preview_df.to_dict(orient="records"),
+        "rows": rows,
     }

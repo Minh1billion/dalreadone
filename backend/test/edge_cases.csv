@@ -1,0 +1,22 @@
+id,name,value,category
+1,Nguyễn Văn A,1.0,A
+2,Trần Thị Bích,-999.0,B
+3,"Say ""hello""",0.0,A
+4,O'Brien,12300000000.0,
+5,"Café, Résumé",inf,C
+6,"line1
+line2",-inf,A
+7,tab	here,,B
+8,100%,0.0,C
+9,"$1,000.00",99999999.0,
+10,C:\path\file,-0.0001,A
+11,,1.0,B
+12, leading,2.0,C
+13,trailing ,3.0,A
+14,,4.0,B
+15,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,5.0,C
+16,<script>alert(1)</script>,6.0,A
+17,1e10,7.0,B
+18,NaN,8.0,C
+19,NULL,9.0,A
+20,TRUE,10.0,B

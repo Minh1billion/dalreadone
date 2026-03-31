@@ -1,8 +1,9 @@
 import json
-import importlib.util
+import math
 from pathlib import Path
 from typing import Any, Callable
 
+import numpy as np
 import pandas as pd
 
 from app.pipelines.eda import (
@@ -15,12 +16,26 @@ from app.pipelines.eda import (
     eda_08_quality_score as m08,
 )
 
-def _load(filename: str):
-    p = Path(__file__).parent / filename
-    spec = importlib.util.spec_from_file_location(filename, p)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+
+def sanitize_for_json(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {k: sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [sanitize_for_json(v) for v in obj]
+    if isinstance(obj, float):
+        return None if (math.isnan(obj) or math.isinf(obj)) else obj
+    if isinstance(obj, np.floating):
+        f = float(obj)
+        return None if (math.isnan(f) or math.isinf(f)) else f
+    if isinstance(obj, np.integer):
+        return int(obj)
+    if isinstance(obj, np.bool_):
+        return bool(obj)
+    if isinstance(obj, np.ndarray):
+        return sanitize_for_json(obj.tolist())
+    if isinstance(obj, pd.Timestamp):
+        return obj.isoformat()
+    return obj
 
 
 def run_eda(
@@ -55,7 +70,7 @@ def run_eda(
     _step("data_quality_score", 95)
     quality = m08.quality_score(df, missing, dt, dist)
 
-    report = {
+    report = sanitize_for_json({
         "eda_report": {
             "meta": {
                 "source_file": source,
@@ -69,20 +84,9 @@ def run_eda(
             "distributions": dist,
             "data_quality_score": quality,
         }
-    }
+    })
 
     if output_path:
-        Path(output_path).write_text(json.dumps(report, indent=2, default=str))
+        Path(output_path).write_text(json.dumps(report, indent=2))
 
     return report
-
-
-if __name__ == "__main__":
-    import sys
-    from app.pipelines.eda.eda_01_ingest import read_data
-
-    data_path = sys.argv[1] if len(sys.argv) > 1 else "test\\data.csv"
-    output_path = sys.argv[2] if len(sys.argv) > 2 else "test\\eda_report_sample.json"
-
-    df, meta = read_data(data_path)
-    run_eda(df, source=meta["source"], output_path=output_path)

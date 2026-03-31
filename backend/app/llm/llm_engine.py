@@ -59,7 +59,6 @@ _REGISTRY: dict[str, type[BaseLLMEngine]] = {
 
 
 def make_engine(provider: str | None = None) -> BaseLLMEngine:
-    """Factory — đọc LLM_PROVIDER từ env, mặc định groq."""
     import os
     key = (provider or os.environ.get("LLM_PROVIDER", "groq")).lower()
     cls = _REGISTRY.get(key)

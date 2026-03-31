@@ -3,6 +3,9 @@ pandas
 matplotlib
 seaborn
 scipy
+openpyxl
+pyarrow
+fastparquet
 
 # LLM
 groq

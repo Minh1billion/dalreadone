@@ -1,0 +1,1344 @@
+[
+  {
+    "user_id": "USR-0001",
+    "profile": {
+      "name": "User 1",
+      "email": "user1@example.com",
+      "age": 22,
+      "location": {
+        "city": "Hanoi",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "React",
+      "Python",
+      "Java",
+      "Docker"
+    ],
+    "stats": {
+      "projects": 11,
+      "rating": 3.9
+    },
+    "active": true,
+    "joined": "2022-06-19T00:00:00",
+    "tags": [
+      "lead"
+    ]
+  },
+  {
+    "user_id": "USR-0002",
+    "profile": {
+      "name": "User 2",
+      "email": "user2@example.com",
+      "age": 29,
+      "location": {
+        "city": "HCMC",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Go",
+      "AWS"
+    ],
+    "stats": {
+      "projects": 13,
+      "rating": 3.2
+    },
+    "active": true,
+    "joined": "2022-06-20T00:00:00",
+    "tags": [
+      "remote"
+    ]
+  },
+  {
+    "user_id": "USR-0003",
+    "profile": {
+      "name": "User 3",
+      "email": "user3@example.com",
+      "age": 27,
+      "location": {
+        "city": "Hanoi",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Python",
+      "Java"
+    ],
+    "stats": {
+      "projects": 1,
+      "rating": 3.8
+    },
+    "active": false,
+    "joined": "2022-09-14T00:00:00",
+    "tags": [
+      "mentor",
+      "remote"
+    ]
+  },
+  {
+    "user_id": "USR-0004",
+    "profile": {
+      "name": "User 4",
+      "email": "user4@example.com",
+      "age": 26,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "ML",
+      "Python",
+      "SQL",
+      "React"
+    ],
+    "stats": {
+      "projects": 4,
+      "rating": 3.8
+    },
+    "active": false,
+    "joined": "2021-06-22T00:00:00",
+    "tags": [
+      "senior",
+      "lead"
+    ]
+  },
+  {
+    "user_id": "USR-0005",
+    "profile": {
+      "name": "User 5",
+      "email": "user5@example.com",
+      "age": 54,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Java",
+      "Python",
+      "SQL",
+      "Docker",
+      "AWS"
+    ],
+    "stats": {
+      "projects": 9,
+      "rating": 3.4
+    },
+    "active": true,
+    "joined": "2020-08-18T00:00:00",
+    "tags": [
+      "senior",
+      "lead"
+    ]
+  },
+  {
+    "user_id": "USR-0006",
+    "profile": {
+      "name": "User 6",
+      "email": "user6@example.com",
+      "age": 31,
+      "location": {
+        "city": "Hanoi",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Docker",
+      "SQL",
+      "Java",
+      "ML"
+    ],
+    "stats": {
+      "projects": 1,
+      "rating": 4.1
+    },
+    "active": true,
+    "joined": "2021-11-10T00:00:00",
+    "tags": [
+      "senior"
+    ]
+  },
+  {
+    "user_id": "USR-0007",
+    "profile": {
+      "name": "User 7",
+      "email": "user7@example.com",
+      "age": 45,
+      "location": {
+        "city": "HCMC",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "AWS",
+      "ML"
+    ],
+    "stats": {
+      "projects": 11,
+      "rating": 4.2
+    },
+    "active": true,
+    "joined": "2020-02-29T00:00:00",
+    "tags": null
+  },
+  {
+    "user_id": "USR-0008",
+    "profile": {
+      "name": "User 8",
+      "email": "user8@example.com",
+      "age": 42,
+      "location": {
+        "city": "Hanoi",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Go",
+      "Python",
+      "Docker"
+    ],
+    "stats": {
+      "projects": 8,
+      "rating": 4.5
+    },
+    "active": true,
+    "joined": "2021-02-22T00:00:00",
+    "tags": [
+      "remote",
+      "senior"
+    ]
+  },
+  {
+    "user_id": "USR-0009",
+    "profile": {
+      "name": "User 9",
+      "email": "user9@example.com",
+      "age": 27,
+      "location": {
+        "city": "HCMC",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "AWS",
+      "SQL",
+      "Docker",
+      "React",
+      "ML"
+    ],
+    "stats": {
+      "projects": 6,
+      "rating": 4.0
+    },
+    "active": true,
+    "joined": "2021-06-24T00:00:00",
+    "tags": [
+      "lead",
+      "senior"
+    ]
+  },
+  {
+    "user_id": "USR-0010",
+    "profile": {
+      "name": "User 10",
+      "email": "user10@example.com",
+      "age": 43,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Python",
+      "SQL",
+      "Docker",
+      "AWS",
+      "Java"
+    ],
+    "stats": {
+      "projects": 2,
+      "rating": 3.0
+    },
+    "active": true,
+    "joined": "2021-12-18T00:00:00",
+    "tags": [
+      "lead",
+      "senior"
+    ]
+  },
+  {
+    "user_id": "USR-0011",
+    "profile": {
+      "name": "User 11",
+      "email": "user11@example.com",
+      "age": 47,
+      "location": {
+        "city": "HCMC",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Go",
+      "Python",
+      "SQL",
+      "Java",
+      "Docker"
+    ],
+    "stats": {
+      "projects": 4,
+      "rating": 4.8
+    },
+    "active": true,
+    "joined": "2022-09-23T00:00:00",
+    "tags": [
+      "senior"
+    ]
+  },
+  {
+    "user_id": "USR-0012",
+    "profile": {
+      "name": "User 12",
+      "email": "user12@example.com",
+      "age": 49,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Go",
+      "Python",
+      "ML"
+    ],
+    "stats": {
+      "projects": 2,
+      "rating": 3.4
+    },
+    "active": true,
+    "joined": "2021-07-10T00:00:00",
+    "tags": [
+      "lead"
+    ]
+  },
+  {
+    "user_id": "USR-0013",
+    "profile": {
+      "name": "User 13",
+      "email": "user13@example.com",
+      "age": 31,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "React",
+      "Python"
+    ],
+    "stats": {
+      "projects": 5,
+      "rating": 3.2
+    },
+    "active": true,
+    "joined": "2020-05-05T00:00:00",
+    "tags": [
+      "senior"
+    ]
+  },
+  {
+    "user_id": "USR-0014",
+    "profile": {
+      "name": "User 14",
+      "email": "user14@example.com",
+      "age": 39,
+      "location": {
+        "city": "Hanoi",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "ML",
+      "Java"
+    ],
+    "stats": {
+      "projects": 3,
+      "rating": 4.7
+    },
+    "active": true,
+    "joined": "2021-02-16T00:00:00",
+    "tags": null
+  },
+  {
+    "user_id": "USR-0015",
+    "profile": {
+      "name": "User 15",
+      "email": "user15@example.com",
+      "age": 33,
+      "location": {
+        "city": "Hanoi",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Python",
+      "ML"
+    ],
+    "stats": {
+      "projects": 10,
+      "rating": 3.5
+    },
+    "active": true,
+    "joined": "2021-03-04T00:00:00",
+    "tags": [
+      "remote"
+    ]
+  },
+  {
+    "user_id": "USR-0016",
+    "profile": {
+      "name": "User 16",
+      "email": "user16@example.com",
+      "age": 28,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Python",
+      "React",
+      "ML",
+      "Go",
+      "SQL"
+    ],
+    "stats": {
+      "projects": 1,
+      "rating": 3.2
+    },
+    "active": true,
+    "joined": "2023-01-20T00:00:00",
+    "tags": [
+      "senior"
+    ]
+  },
+  {
+    "user_id": "USR-0017",
+    "profile": {
+      "name": "User 17",
+      "email": "user17@example.com",
+      "age": 25,
+      "location": {
+        "city": "HCMC",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Go",
+      "Java",
+      "Docker",
+      "ML"
+    ],
+    "stats": {
+      "projects": 8,
+      "rating": 4.7
+    },
+    "active": true,
+    "joined": "2020-05-26T00:00:00",
+    "tags": [
+      "lead"
+    ]
+  },
+  {
+    "user_id": "USR-0018",
+    "profile": {
+      "name": "User 18",
+      "email": "user18@example.com",
+      "age": 49,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "AWS",
+      "SQL",
+      "Docker",
+      "React"
+    ],
+    "stats": {
+      "projects": 3,
+      "rating": 3.1
+    },
+    "active": true,
+    "joined": "2023-04-11T00:00:00",
+    "tags": [
+      "senior"
+    ]
+  },
+  {
+    "user_id": "USR-0019",
+    "profile": {
+      "name": "User 19",
+      "email": "user19@example.com",
+      "age": 32,
+      "location": {
+        "city": "HCMC",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "SQL",
+      "Go",
+      "Python",
+      "ML",
+      "React"
+    ],
+    "stats": {
+      "projects": 2,
+      "rating": 4.6
+    },
+    "active": true,
+    "joined": "2021-11-23T00:00:00",
+    "tags": [
+      "senior",
+      "mentor"
+    ]
+  },
+  {
+    "user_id": "USR-0020",
+    "profile": {
+      "name": "User 20",
+      "email": "user20@example.com",
+      "age": 54,
+      "location": {
+        "city": "Hanoi",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Docker",
+      "Java",
+      "AWS"
+    ],
+    "stats": {
+      "projects": 11,
+      "rating": 4.9
+    },
+    "active": true,
+    "joined": "2021-08-15T00:00:00",
+    "tags": [
+      "senior",
+      "mentor"
+    ]
+  },
+  {
+    "user_id": "USR-0021",
+    "profile": {
+      "name": "User 21",
+      "email": "user21@example.com",
+      "age": 35,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Java",
+      "Go",
+      "ML",
+      "React"
+    ],
+    "stats": {
+      "projects": 9,
+      "rating": 3.6
+    },
+    "active": true,
+    "joined": "2020-06-02T00:00:00",
+    "tags": null
+  },
+  {
+    "user_id": "USR-0022",
+    "profile": {
+      "name": "User 22",
+      "email": "user22@example.com",
+      "age": 54,
+      "location": {
+        "city": "Hanoi",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Python",
+      "SQL",
+      "Java",
+      "Docker",
+      "Go"
+    ],
+    "stats": {
+      "projects": 17,
+      "rating": 4.2
+    },
+    "active": true,
+    "joined": "2022-03-11T00:00:00",
+    "tags": [
+      "senior"
+    ]
+  },
+  {
+    "user_id": "USR-0023",
+    "profile": {
+      "name": "User 23",
+      "email": "user23@example.com",
+      "age": 36,
+      "location": {
+        "city": "HCMC",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Go",
+      "Docker",
+      "SQL",
+      "Python",
+      "Java"
+    ],
+    "stats": {
+      "projects": 13,
+      "rating": 4.9
+    },
+    "active": false,
+    "joined": "2022-05-26T00:00:00",
+    "tags": [
+      "mentor"
+    ]
+  },
+  {
+    "user_id": "USR-0024",
+    "profile": {
+      "name": "User 24",
+      "email": "user24@example.com",
+      "age": 47,
+      "location": {
+        "city": "Hanoi",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "AWS",
+      "React",
+      "Go"
+    ],
+    "stats": {
+      "projects": 9,
+      "rating": 4.1
+    },
+    "active": true,
+    "joined": "2020-12-15T00:00:00",
+    "tags": [
+      "remote",
+      "lead"
+    ]
+  },
+  {
+    "user_id": "USR-0025",
+    "profile": {
+      "name": "User 25",
+      "email": "user25@example.com",
+      "age": 33,
+      "location": {
+        "city": "HCMC",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Docker",
+      "Java",
+      "AWS"
+    ],
+    "stats": {
+      "projects": 7,
+      "rating": 3.7
+    },
+    "active": true,
+    "joined": "2021-09-30T00:00:00",
+    "tags": [
+      "mentor"
+    ]
+  },
+  {
+    "user_id": "USR-0026",
+    "profile": {
+      "name": "User 26",
+      "email": "user26@example.com",
+      "age": 32,
+      "location": {
+        "city": "Hanoi",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Docker",
+      "Java",
+      "SQL",
+      "Python"
+    ],
+    "stats": {
+      "projects": 14,
+      "rating": 3.8
+    },
+    "active": true,
+    "joined": "2022-07-25T00:00:00",
+    "tags": [
+      "lead",
+      "mentor"
+    ]
+  },
+  {
+    "user_id": "USR-0027",
+    "profile": {
+      "name": "User 27",
+      "email": "user27@example.com",
+      "age": 47,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Docker",
+      "ML",
+      "SQL",
+      "AWS"
+    ],
+    "stats": {
+      "projects": 5,
+      "rating": 4.7
+    },
+    "active": false,
+    "joined": "2020-08-05T00:00:00",
+    "tags": [
+      "senior",
+      "mentor"
+    ]
+  },
+  {
+    "user_id": "USR-0028",
+    "profile": {
+      "name": "User 28",
+      "email": "user28@example.com",
+      "age": 25,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Go",
+      "React",
+      "AWS",
+      "Java",
+      "SQL"
+    ],
+    "stats": {
+      "projects": 1,
+      "rating": 4.9
+    },
+    "active": true,
+    "joined": "2020-05-04T00:00:00",
+    "tags": null
+  },
+  {
+    "user_id": "USR-0029",
+    "profile": {
+      "name": "User 29",
+      "email": "user29@example.com",
+      "age": 52,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Go",
+      "Java",
+      "ML",
+      "AWS"
+    ],
+    "stats": {
+      "projects": 19,
+      "rating": 3.1
+    },
+    "active": true,
+    "joined": "2020-01-06T00:00:00",
+    "tags": [
+      "lead",
+      "mentor"
+    ]
+  },
+  {
+    "user_id": "USR-0030",
+    "profile": {
+      "name": "User 30",
+      "email": "user30@example.com",
+      "age": 40,
+      "location": {
+        "city": "Hanoi",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Go",
+      "Python"
+    ],
+    "stats": {
+      "projects": 7,
+      "rating": 4.7
+    },
+    "active": true,
+    "joined": "2022-06-11T00:00:00",
+    "tags": [
+      "lead"
+    ]
+  },
+  {
+    "user_id": "USR-0031",
+    "profile": {
+      "name": "User 31",
+      "email": "user31@example.com",
+      "age": 37,
+      "location": {
+        "city": "HCMC",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "ML",
+      "Docker"
+    ],
+    "stats": {
+      "projects": 11,
+      "rating": 3.7
+    },
+    "active": false,
+    "joined": "2022-08-01T00:00:00",
+    "tags": [
+      "senior",
+      "lead"
+    ]
+  },
+  {
+    "user_id": "USR-0032",
+    "profile": {
+      "name": "User 32",
+      "email": "user32@example.com",
+      "age": 34,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "React",
+      "AWS",
+      "ML",
+      "Docker"
+    ],
+    "stats": {
+      "projects": 2,
+      "rating": 3.3
+    },
+    "active": true,
+    "joined": "2020-11-20T00:00:00",
+    "tags": [
+      "lead"
+    ]
+  },
+  {
+    "user_id": "USR-0033",
+    "profile": {
+      "name": "User 33",
+      "email": "user33@example.com",
+      "age": 38,
+      "location": {
+        "city": "Hanoi",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Docker",
+      "AWS",
+      "SQL",
+      "Java"
+    ],
+    "stats": {
+      "projects": 5,
+      "rating": 4.9
+    },
+    "active": false,
+    "joined": "2023-03-04T00:00:00",
+    "tags": [
+      "senior",
+      "mentor"
+    ]
+  },
+  {
+    "user_id": "USR-0034",
+    "profile": {
+      "name": "User 34",
+      "email": "user34@example.com",
+      "age": 28,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "AWS",
+      "Java",
+      "Docker",
+      "React"
+    ],
+    "stats": {
+      "projects": 19,
+      "rating": 3.7
+    },
+    "active": true,
+    "joined": "2022-11-19T00:00:00",
+    "tags": [
+      "mentor"
+    ]
+  },
+  {
+    "user_id": "USR-0035",
+    "profile": {
+      "name": "User 35",
+      "email": "user35@example.com",
+      "age": 48,
+      "location": {
+        "city": "HCMC",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Go",
+      "Java",
+      "ML"
+    ],
+    "stats": {
+      "projects": 5,
+      "rating": 5.0
+    },
+    "active": true,
+    "joined": "2021-11-08T00:00:00",
+    "tags": null
+  },
+  {
+    "user_id": "USR-0036",
+    "profile": {
+      "name": "User 36",
+      "email": "user36@example.com",
+      "age": 52,
+      "location": {
+        "city": "HCMC",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Python",
+      "Go",
+      "ML",
+      "AWS",
+      "Docker"
+    ],
+    "stats": {
+      "projects": 8,
+      "rating": 3.8
+    },
+    "active": true,
+    "joined": "2022-11-23T00:00:00",
+    "tags": [
+      "remote",
+      "mentor"
+    ]
+  },
+  {
+    "user_id": "USR-0037",
+    "profile": {
+      "name": "User 37",
+      "email": "user37@example.com",
+      "age": 29,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Go",
+      "ML"
+    ],
+    "stats": {
+      "projects": 6,
+      "rating": 3.6
+    },
+    "active": false,
+    "joined": "2020-03-20T00:00:00",
+    "tags": [
+      "lead"
+    ]
+  },
+  {
+    "user_id": "USR-0038",
+    "profile": {
+      "name": "User 38",
+      "email": "user38@example.com",
+      "age": 53,
+      "location": {
+        "city": "HCMC",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "AWS",
+      "Docker",
+      "Java",
+      "ML"
+    ],
+    "stats": {
+      "projects": 9,
+      "rating": 4.4
+    },
+    "active": true,
+    "joined": "2022-01-21T00:00:00",
+    "tags": [
+      "mentor",
+      "lead"
+    ]
+  },
+  {
+    "user_id": "USR-0039",
+    "profile": {
+      "name": "User 39",
+      "email": "user39@example.com",
+      "age": 25,
+      "location": {
+        "city": "HCMC",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Python",
+      "ML",
+      "Java",
+      "AWS",
+      "Docker"
+    ],
+    "stats": {
+      "projects": 12,
+      "rating": 3.1
+    },
+    "active": true,
+    "joined": "2023-02-27T00:00:00",
+    "tags": [
+      "senior",
+      "mentor"
+    ]
+  },
+  {
+    "user_id": "USR-0040",
+    "profile": {
+      "name": "User 40",
+      "email": "user40@example.com",
+      "age": 52,
+      "location": {
+        "city": "Hanoi",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Python",
+      "ML",
+      "React"
+    ],
+    "stats": {
+      "projects": 3,
+      "rating": 3.4
+    },
+    "active": true,
+    "joined": "2020-08-10T00:00:00",
+    "tags": [
+      "remote"
+    ]
+  },
+  {
+    "user_id": "USR-0041",
+    "profile": {
+      "name": "User 41",
+      "email": "user41@example.com",
+      "age": 38,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "SQL",
+      "Java"
+    ],
+    "stats": {
+      "projects": 8,
+      "rating": 4.6
+    },
+    "active": false,
+    "joined": "2020-10-21T00:00:00",
+    "tags": [
+      "remote"
+    ]
+  },
+  {
+    "user_id": "USR-0042",
+    "profile": {
+      "name": "User 42",
+      "email": "user42@example.com",
+      "age": 41,
+      "location": {
+        "city": "HCMC",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Go",
+      "Python",
+      "AWS",
+      "Java",
+      "SQL"
+    ],
+    "stats": {
+      "projects": 17,
+      "rating": 4.3
+    },
+    "active": true,
+    "joined": "2020-06-09T00:00:00",
+    "tags": null
+  },
+  {
+    "user_id": "USR-0043",
+    "profile": {
+      "name": "User 43",
+      "email": "user43@example.com",
+      "age": 36,
+      "location": {
+        "city": "HCMC",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Java",
+      "Python"
+    ],
+    "stats": {
+      "projects": 4,
+      "rating": 5.0
+    },
+    "active": false,
+    "joined": "2021-10-03T00:00:00",
+    "tags": [
+      "mentor",
+      "remote"
+    ]
+  },
+  {
+    "user_id": "USR-0044",
+    "profile": {
+      "name": "User 44",
+      "email": "user44@example.com",
+      "age": 23,
+      "location": {
+        "city": "Hanoi",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "AWS",
+      "React",
+      "ML",
+      "SQL"
+    ],
+    "stats": {
+      "projects": 11,
+      "rating": 4.8
+    },
+    "active": true,
+    "joined": "2020-12-28T00:00:00",
+    "tags": [
+      "senior"
+    ]
+  },
+  {
+    "user_id": "USR-0045",
+    "profile": {
+      "name": "User 45",
+      "email": "user45@example.com",
+      "age": 52,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "React",
+      "AWS",
+      "Python",
+      "Docker",
+      "Java"
+    ],
+    "stats": {
+      "projects": 18,
+      "rating": 3.1
+    },
+    "active": true,
+    "joined": "2020-05-21T00:00:00",
+    "tags": [
+      "lead",
+      "senior"
+    ]
+  },
+  {
+    "user_id": "USR-0046",
+    "profile": {
+      "name": "User 46",
+      "email": "user46@example.com",
+      "age": 27,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "React",
+      "ML",
+      "SQL",
+      "Python"
+    ],
+    "stats": {
+      "projects": 2,
+      "rating": 4.1
+    },
+    "active": true,
+    "joined": "2023-01-03T00:00:00",
+    "tags": [
+      "remote",
+      "mentor"
+    ]
+  },
+  {
+    "user_id": "USR-0047",
+    "profile": {
+      "name": "User 47",
+      "email": "user47@example.com",
+      "age": 36,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "React",
+      "ML"
+    ],
+    "stats": {
+      "projects": 4,
+      "rating": 3.6
+    },
+    "active": true,
+    "joined": "2023-03-08T00:00:00",
+    "tags": [
+      "lead",
+      "remote"
+    ]
+  },
+  {
+    "user_id": "USR-0048",
+    "profile": {
+      "name": "User 48",
+      "email": "user48@example.com",
+      "age": 31,
+      "location": {
+        "city": "Hanoi",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "SQL",
+      "AWS",
+      "Go",
+      "React",
+      "Python"
+    ],
+    "stats": {
+      "projects": 4,
+      "rating": 4.7
+    },
+    "active": true,
+    "joined": "2020-04-23T00:00:00",
+    "tags": [
+      "remote",
+      "mentor"
+    ]
+  },
+  {
+    "user_id": "USR-0049",
+    "profile": {
+      "name": "User 49",
+      "email": "user49@example.com",
+      "age": 49,
+      "location": {
+        "city": "Hanoi",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "AWS",
+      "Go",
+      "SQL",
+      "React",
+      "Java"
+    ],
+    "stats": {
+      "projects": 12,
+      "rating": 4.9
+    },
+    "active": true,
+    "joined": "2022-10-07T00:00:00",
+    "tags": null
+  },
+  {
+    "user_id": "USR-0050",
+    "profile": {
+      "name": "User 50",
+      "email": "user50@example.com",
+      "age": 52,
+      "location": {
+        "city": "Da Nang",
+        "country": "VN"
+      }
+    },
+    "skills": [
+      "Java",
+      "ML",
+      "SQL"
+    ],
+    "stats": {
+      "projects": 11,
+      "rating": 4.1
+    },
+    "active": false,
+    "joined": "2020-09-15T00:00:00",
+    "tags": [
+      "senior",
+      "remote"
+    ]
+  }
+]
