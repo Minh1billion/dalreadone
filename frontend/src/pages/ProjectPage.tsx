@@ -24,7 +24,7 @@ export default function ProjectPage() {
   const panel = useFilePanel({
     projectId: pid,
     activeFileId,
-    onSelectFile: (id) => { setActiveFileId(id || null); eda.reset(); preprocess.reset() },
+    onSelectFile: (id) => { setActiveFileId(id || null); eda.reset(); },
   })
 
   const eda        = useEDA(activeFileId)
@@ -61,7 +61,7 @@ export default function ProjectPage() {
           uploadProgress={panel.uploadProgress ?? 0}
           uploadError={panel.uploadError}
           inputRef={panel.inputRef}
-          onSelectFile={(id) => { setActiveFileId(id === activeFileId ? null : id); eda.reset(); preprocess.reset() }}
+          onSelectFile={(id) => { setActiveFileId(id === activeFileId ? null : id); eda.reset(); }}
           onDelete={panel.handleDelete}
           onTriggerFilePicker={panel.triggerFilePicker}
           onFileChange={panel.handleFileChange}
@@ -125,6 +125,7 @@ export default function ProjectPage() {
             <EDASection eda={eda} activeFile={activeFile} />
 
             <PreprocessSection
+              key={activeFileId}
               preprocess={preprocess}
               preview={panel.preview}
               onConfirmSuccess={panel.triggerRefresh}

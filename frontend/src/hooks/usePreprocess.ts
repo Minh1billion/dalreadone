@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { preprocessApi, type OperationConfig, type PreprocessTask } from '../api/preprocess'
 
@@ -10,6 +10,16 @@ export function usePreprocess(fileId: number | null) {
   const [confirming,   setConfirming]   = useState(false)
   const [confirmError, setConfirmError] = useState<string | null>(null)
   const [confirmed,    setConfirmed]    = useState(false)
+
+  useEffect(() => {
+      setTaskId(null)
+      setRunning(false)
+      setRunError(null)
+      setConfirming(false)
+      setConfirmError(null)
+      setConfirmed(false)
+      qc.removeQueries({ queryKey: ['preprocess-task'] })
+    }, [fileId, qc])
 
   const taskQuery = useQuery<PreprocessTask>({
     queryKey: ['preprocess-task', taskId],
