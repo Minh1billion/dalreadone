@@ -1,0 +1,99 @@
+{
+  "overview": {
+    "source_file": "data.csv",
+    "rows": 50,
+    "cols": 11,
+    "memory_mb": 0.02,
+    "duplicate_pct": 0.0,
+    "quality_score": 0.9956
+  },
+  "issues": [
+    {
+      "col": "region",
+      "severity": "medium",
+      "detail": "8.0% null values",
+      "impact": "may lead to biased analysis if left unaddressed"
+    },
+    {
+      "col": "customer_name",
+      "severity": "low",
+      "detail": "4.0% null values",
+      "impact": "may affect customer-level analysis"
+    },
+    {
+      "col": "quantity",
+      "severity": "low",
+      "detail": "4.0% outliers",
+      "impact": "may affect distribution-based analysis"
+    },
+    {
+      "col": "unit_price",
+      "severity": "medium",
+      "detail": "12.0% outliers",
+      "impact": "may significantly affect distribution-based analysis"
+    },
+    {
+      "col": "discount",
+      "severity": "low",
+      "detail": "32.0% zeros",
+      "impact": "may indicate a special case or require special handling"
+    }
+  ],
+  "prep_steps": [
+    {
+      "priority": "must",
+      "col": null,
+      "action": "handle_nulls",
+      "rationale": "replace null values in 'region' and 'customer_name' to prevent biased analysis"
+    },
+    {
+      "priority": "must",
+      "col": "order_date",
+      "action": "convert_to_datetime",
+      "rationale": "enable date-based analysis and filtering"
+    },
+    {
+      "priority": "should",
+      "col": "quantity",
+      "action": "transform_to_normal",
+      "rationale": "stabilize variance for more accurate modeling"
+    },
+    {
+      "priority": "should",
+      "col": "unit_price",
+      "action": "remove_outliers",
+      "rationale": "prevent outliers from dominating analysis results"
+    },
+    {
+      "priority": "optional",
+      "col": "discount",
+      "action": "handle_zeros",
+      "rationale": "investigate and potentially impute or transform zero discount values"
+    }
+  ],
+  "opportunities": [
+    "Analyze regional sales trends and preferences",
+    "Investigate customer purchase behavior and loyalty",
+    "Identify top-selling products and categories",
+    "Model the relationship between quantity, unit price, and discount",
+    "Explore seasonality and date-based patterns in sales data"
+  ],
+  "usage": {
+    "summary": {
+      "total_prompt_tokens": 1967,
+      "total_completion_tokens": 519,
+      "total_tokens": 2486,
+      "total_cost_usd": 0.00157054
+    },
+    "per_chain": [
+      {
+        "chain": "eda_review",
+        "model": "llama-3.3-70b-versatile",
+        "prompt_tokens": 1967,
+        "completion_tokens": 519,
+        "total_tokens": 2486,
+        "cost_usd": 0.00157054
+      }
+    ]
+  }
+}

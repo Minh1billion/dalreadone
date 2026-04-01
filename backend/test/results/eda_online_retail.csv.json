@@ -1,0 +1,638 @@
+{
+  "eda_report": {
+    "meta": {
+      "source_file": "online_retail.csv",
+      "generated_at": "2026-04-01T02:30:56.424274+00:00"
+    },
+    "schema": {
+      "n_rows": 541909,
+      "n_cols": 8,
+      "memory_mb": 193.79,
+      "columns": [
+        {
+          "name": "InvoiceNo",
+          "dtype": "object",
+          "inferred_type": "string",
+          "n_nulls": 0,
+          "n_unique": 25900,
+          "first_10_unique_values": [
+            "536365",
+            "536366",
+            "536367",
+            "536368",
+            "536369",
+            "536370",
+            "536371",
+            "536372",
+            "536373",
+            "536374"
+          ]
+        },
+        {
+          "name": "StockCode",
+          "dtype": "object",
+          "inferred_type": "string",
+          "n_nulls": 0,
+          "n_unique": 4070,
+          "first_10_unique_values": [
+            "85123A",
+            "71053",
+            "84406B",
+            "84029G",
+            "84029E",
+            "22752",
+            "21730",
+            "22633",
+            "22632",
+            "84879"
+          ]
+        },
+        {
+          "name": "Description",
+          "dtype": "object",
+          "inferred_type": "string",
+          "n_nulls": 1454,
+          "n_unique": 4223,
+          "first_10_unique_values": [
+            "WHITE HANGING HEART T-LIGHT HOLDER",
+            "WHITE METAL LANTERN",
+            "CREAM CUPID HEARTS COAT HANGER",
+            "KNITTED UNION FLAG HOT WATER BOTTLE",
+            "RED WOOLLY HOTTIE WHITE HEART.",
+            "SET 7 BABUSHKA NESTING BOXES",
+            "GLASS STAR FROSTED T-LIGHT HOLDER",
+            "HAND WARMER UNION JACK",
+            "HAND WARMER RED POLKA DOT",
+            "ASSORTED COLOUR BIRD ORNAMENT"
+          ]
+        },
+        {
+          "name": "Quantity",
+          "dtype": "int64",
+          "inferred_type": "integer",
+          "n_nulls": 0,
+          "n_unique": 722,
+          "first_10_unique_values": [
+            6,
+            8,
+            2,
+            32,
+            3,
+            4,
+            24,
+            12,
+            48,
+            18
+          ]
+        },
+        {
+          "name": "InvoiceDate",
+          "dtype": "object",
+          "inferred_type": "string",
+          "n_nulls": 0,
+          "n_unique": 23260,
+          "first_10_unique_values": [
+            "12/1/2010 8:26",
+            "12/1/2010 8:28",
+            "12/1/2010 8:34",
+            "12/1/2010 8:35",
+            "12/1/2010 8:45",
+            "12/1/2010 9:00",
+            "12/1/2010 9:01",
+            "12/1/2010 9:02",
+            "12/1/2010 9:09",
+            "12/1/2010 9:32"
+          ]
+        },
+        {
+          "name": "UnitPrice",
+          "dtype": "float64",
+          "inferred_type": "floating",
+          "n_nulls": 0,
+          "n_unique": 1630,
+          "first_10_unique_values": [
+            2.55,
+            3.39,
+            2.75,
+            7.65,
+            4.25,
+            1.85,
+            1.69,
+            2.1,
+            3.75,
+            1.65
+          ]
+        },
+        {
+          "name": "CustomerID",
+          "dtype": "float64",
+          "inferred_type": "floating",
+          "n_nulls": 135080,
+          "n_unique": 4372,
+          "first_10_unique_values": [
+            17850,
+            13047,
+            12583,
+            13748,
+            15100,
+            15291,
+            14688,
+            17809,
+            15311,
+            14527
+          ]
+        },
+        {
+          "name": "Country",
+          "dtype": "object",
+          "inferred_type": "string",
+          "n_nulls": 0,
+          "n_unique": 38,
+          "first_10_unique_values": [
+            "United Kingdom",
+            "France",
+            "Australia",
+            "Netherlands",
+            "Germany",
+            "Norway",
+            "EIRE",
+            "Switzerland",
+            "Spain",
+            "Poland"
+          ]
+        }
+      ]
+    },
+    "missing_and_duplicates": {
+      "duplicate_rows": 5268,
+      "duplicate_pct": 0.97,
+      "columns": {
+        "Description": {
+          "null_count": 1454,
+          "null_pct": 0.27
+        },
+        "CustomerID": {
+          "null_count": 135080,
+          "null_pct": 24.93
+        }
+      }
+    },
+    "univariate": {
+      "numeric": {
+        "Quantity": {
+          "mean": 9.55224954743324,
+          "median": 3,
+          "std": 218.08115785023384,
+          "min": -80995,
+          "max": 80995,
+          "p25": 1,
+          "p75": 10,
+          "skewness": -0.2640763070668848,
+          "kurtosis": 119769.16003068598,
+          "zeros_pct": 0,
+          "outlier_count": 58619,
+          "outlier_pct": 10.82
+        },
+        "UnitPrice": {
+          "mean": 4.611113626088513,
+          "median": 2.08,
+          "std": 96.75985306117938,
+          "min": -11062.06,
+          "max": 38970,
+          "p25": 1.25,
+          "p75": 4.13,
+          "skewness": 186.50697172054137,
+          "kurtosis": 59005.71909694814,
+          "zeros_pct": 0.46,
+          "outlier_count": 39627,
+          "outlier_pct": 7.31
+        },
+        "CustomerID": {
+          "mean": 15287.690570239585,
+          "median": 15152,
+          "std": 1713.6003033215982,
+          "min": 12346,
+          "max": 18287,
+          "p25": 13953,
+          "p75": 16791,
+          "skewness": 0.029834990051677234,
+          "kurtosis": -1.1799823722162364,
+          "zeros_pct": 0,
+          "outlier_count": 0,
+          "outlier_pct": 0
+        }
+      },
+      "categorical": {
+        "InvoiceNo": {
+          "cardinality": 25900,
+          "top_values": [
+            {
+              "value": "573585",
+              "count": 1114,
+              "pct": 0.21
+            },
+            {
+              "value": "581219",
+              "count": 749,
+              "pct": 0.14
+            },
+            {
+              "value": "581492",
+              "count": 731,
+              "pct": 0.13
+            },
+            {
+              "value": "580729",
+              "count": 721,
+              "pct": 0.13
+            },
+            {
+              "value": "558475",
+              "count": 705,
+              "pct": 0.13
+            }
+          ],
+          "entropy": 13.387767562842042,
+          "mode": "573585",
+          "rare_pct": 100
+        },
+        "StockCode": {
+          "cardinality": 4070,
+          "top_values": [
+            {
+              "value": "85123A",
+              "count": 2313,
+              "pct": 0.43
+            },
+            {
+              "value": "22423",
+              "count": 2203,
+              "pct": 0.41
+            },
+            {
+              "value": "85099B",
+              "count": 2159,
+              "pct": 0.4
+            },
+            {
+              "value": "47566",
+              "count": 1727,
+              "pct": 0.32
+            },
+            {
+              "value": "20725",
+              "count": 1639,
+              "pct": 0.3
+            }
+          ],
+          "entropy": 10.908999235826133,
+          "mode": "85123A",
+          "rare_pct": 100
+        },
+        "Description": {
+          "cardinality": 4223,
+          "top_values": [
+            {
+              "value": "WHITE HANGING HEART T-LIGHT HOLDER",
+              "count": 2369,
+              "pct": 0.44
+            },
+            {
+              "value": "REGENCY CAKESTAND 3 TIER",
+              "count": 2200,
+              "pct": 0.41
+            },
+            {
+              "value": "JUMBO BAG RED RETROSPOT",
+              "count": 2159,
+              "pct": 0.4
+            },
+            {
+              "value": "PARTY BUNTING",
+              "count": 1727,
+              "pct": 0.32
+            },
+            {
+              "value": "LUNCH BAG RED RETROSPOT",
+              "count": 1638,
+              "pct": 0.3
+            }
+          ],
+          "entropy": 10.929065323773806,
+          "mode": "WHITE HANGING HEART T-LIGHT HOLDER",
+          "rare_pct": 100
+        },
+        "InvoiceDate": {
+          "cardinality": 23260,
+          "top_values": [
+            {
+              "value": "10/31/2011 14:41",
+              "count": 1114,
+              "pct": 0.21
+            },
+            {
+              "value": "12/8/2011 9:28",
+              "count": 749,
+              "pct": 0.14
+            },
+            {
+              "value": "12/9/2011 10:03",
+              "count": 731,
+              "pct": 0.13
+            },
+            {
+              "value": "12/5/2011 17:24",
+              "count": 721,
+              "pct": 0.13
+            },
+            {
+              "value": "6/29/2011 15:58",
+              "count": 705,
+              "pct": 0.13
+            }
+          ],
+          "entropy": 13.280997881476065,
+          "mode": "10/31/2011 14:41",
+          "rare_pct": 100
+        },
+        "Country": {
+          "cardinality": 38,
+          "top_values": [
+            {
+              "value": "United Kingdom",
+              "count": 495478,
+              "pct": 91.43
+            },
+            {
+              "value": "Germany",
+              "count": 9495,
+              "pct": 1.75
+            },
+            {
+              "value": "France",
+              "count": 8557,
+              "pct": 1.58
+            },
+            {
+              "value": "EIRE",
+              "count": 8196,
+              "pct": 1.51
+            },
+            {
+              "value": "Spain",
+              "count": 2533,
+              "pct": 0.47
+            }
+          ],
+          "entropy": 0.7405420832584647,
+          "mode": "United Kingdom",
+          "rare_pct": 3.72
+        }
+      }
+    },
+    "datetime": {
+      "InvoiceDate": {
+        "min_date": "2010-12-01",
+        "max_date": "2011-12-09",
+        "date_range_days": 373,
+        "inferred_freq": null,
+        "gaps_count": null,
+        "seasonality_hint": "unknown",
+        "timezone": "naive"
+      }
+    },
+    "correlations": {
+      "pearson": {
+        "Quantity__UnitPrice": -0.0008,
+        "Quantity__CustomerID": -0.0079,
+        "UnitPrice__CustomerID": -0.0021
+      },
+      "cramers_v": {},
+      "top_corr_pairs": [
+        {
+          "col_a": "Quantity",
+          "col_b": "CustomerID",
+          "method": "pearson",
+          "value": -0.0079
+        },
+        {
+          "col_a": "UnitPrice",
+          "col_b": "CustomerID",
+          "method": "pearson",
+          "value": -0.0021
+        },
+        {
+          "col_a": "Quantity",
+          "col_b": "UnitPrice",
+          "method": "pearson",
+          "value": -0.0008
+        }
+      ]
+    },
+    "distributions": {
+      "Quantity": {
+        "normality_test": {
+          "method": "shapiro",
+          "p_value": 0,
+          "is_normal": false
+        },
+        "dist_type_hint": "approximately-normal",
+        "histogram_bins": [
+          {
+            "range": "[-80995.0,-64796.0)",
+            "count": 2
+          },
+          {
+            "range": "[-64796.0,-48597.0)",
+            "count": 0
+          },
+          {
+            "range": "[-48597.0,-32398.0)",
+            "count": 0
+          },
+          {
+            "range": "[-32398.0,-16199.0)",
+            "count": 0
+          },
+          {
+            "range": "[-16199.0,0.0)",
+            "count": 10622
+          },
+          {
+            "range": "[0.0,16199.0)",
+            "count": 531283
+          },
+          {
+            "range": "[16199.0,32398.0)",
+            "count": 0
+          },
+          {
+            "range": "[32398.0,48597.0)",
+            "count": 0
+          },
+          {
+            "range": "[48597.0,64796.0)",
+            "count": 0
+          },
+          {
+            "range": "[64796.0,80995.0)",
+            "count": 2
+          }
+        ],
+        "outlier_summary": {
+          "count": 58619,
+          "pct": 10.82,
+          "lower_fence": -12.5,
+          "upper_fence": 23.5,
+          "preview_idx": [
+            9,
+            26,
+            27,
+            30,
+            31,
+            32,
+            34,
+            35,
+            36,
+            37
+          ]
+        }
+      },
+      "UnitPrice": {
+        "normality_test": {
+          "method": "shapiro",
+          "p_value": 0,
+          "is_normal": false
+        },
+        "dist_type_hint": "right-skewed",
+        "histogram_bins": [
+          {
+            "range": "[-11062.06,-6058.85)",
+            "count": 2
+          },
+          {
+            "range": "[-6058.85,-1055.65)",
+            "count": 0
+          },
+          {
+            "range": "[-1055.65,3947.56)",
+            "count": 541864
+          },
+          {
+            "range": "[3947.56,8950.76)",
+            "count": 33
+          },
+          {
+            "range": "[8950.76,13953.97)",
+            "count": 6
+          },
+          {
+            "range": "[13953.97,18957.18)",
+            "count": 3
+          },
+          {
+            "range": "[18957.18,23960.38)",
+            "count": 0
+          },
+          {
+            "range": "[23960.38,28963.59)",
+            "count": 0
+          },
+          {
+            "range": "[28963.59,33966.79)",
+            "count": 0
+          },
+          {
+            "range": "[33966.79,38970.0)",
+            "count": 1
+          }
+        ],
+        "outlier_summary": {
+          "count": 39627,
+          "pct": 7.31,
+          "lower_fence": -3.07,
+          "upper_fence": 8.45,
+          "preview_idx": [
+            16,
+            45,
+            65,
+            141,
+            151,
+            152,
+            153,
+            163,
+            167,
+            168
+          ]
+        }
+      },
+      "CustomerID": {
+        "normality_test": {
+          "method": "shapiro",
+          "p_value": 0,
+          "is_normal": false
+        },
+        "dist_type_hint": "approximately-normal",
+        "histogram_bins": [
+          {
+            "range": "[12346.0,12940.1)",
+            "count": 43760
+          },
+          {
+            "range": "[12940.1,13534.2)",
+            "count": 37481
+          },
+          {
+            "range": "[13534.2,14128.3)",
+            "count": 38062
+          },
+          {
+            "range": "[14128.3,14722.4)",
+            "count": 49596
+          },
+          {
+            "range": "[14722.4,15316.5)",
+            "count": 44765
+          },
+          {
+            "range": "[15316.5,15910.6)",
+            "count": 37667
+          },
+          {
+            "range": "[15910.6,16504.7)",
+            "count": 34064
+          },
+          {
+            "range": "[16504.7,17098.8)",
+            "count": 40381
+          },
+          {
+            "range": "[17098.8,17692.9)",
+            "count": 38682
+          },
+          {
+            "range": "[17692.9,18287.0)",
+            "count": 42371
+          }
+        ],
+        "outlier_summary": {
+          "count": 0,
+          "pct": 0,
+          "lower_fence": 9696,
+          "upper_fence": 21048,
+          "preview_idx": []
+        }
+      }
+    },
+    "data_quality_score": {
+      "completeness": 0.9685,
+      "consistency": 0.9396,
+      "uniqueness": 0.9903,
+      "timeliness": 1,
+      "overall_score": 0.9714,
+      "flags": [
+        "high null in 'CustomerID' (24.93%)"
+      ]
+    }
+  }
+}

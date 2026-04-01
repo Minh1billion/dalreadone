@@ -5,14 +5,6 @@ import os
 from sqlalchemy import text
 
 TESTS = [
-    ("S3 Connection",  "test/test_s3.py"),
-    # ("Groq Connection", "test/test_groq.py"), # Comment to save token on test
-    ("DB Connection",   "test/test_db.py"),
-    ("Auth Flow",       "test/test_auth.py"),
-    ("Project Flow",    "test/test_projects.py"),
-    ("File Flow",       "test/test_files.py"),
-    ("Query Flow",      "test/test_query.py"),
-    # ("History Flow",    "test/test_history.py"), # Comment to save token on test
 ]
 
 from app.db.session import engine

@@ -42,3 +42,5 @@ starlette
 
 # Config
 python-dotenv
+pytest-asyncio
+pytest
