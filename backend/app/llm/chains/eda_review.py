@@ -41,10 +41,21 @@ preprocessing steps (description only, no code).
 }}
 
 ## Rules
-- issues: flag nulls, outliers, type mismatches, duplicates, skew — with exact %
-- prep_steps: ordered must → should → optional; dataset-level steps first
-- Do NOT flag high cardinality on ID/invoice columns as an issue
-- opportunities: concrete analysis ideas enabled by this dataset
+- Read `overview.column_names` first to understand the dataset domain \
+(e.g. time-series, retail transactions, sensor data) — tailor all \
+observations and opportunities to that domain
+- issues: only flag problems actually evidenced by the numbers \
+(null_pct > 0, outlier_pct > 5, duplicate_pct > 1, negative values \
+in quantity/price columns, etc.)
+- Do NOT flag issues for columns/stats that are absent simply because \
+the dataset has few columns — absence of correlations or distributions \
+in a 2-column dataset is expected, not an issue
+- Do NOT flag high cardinality on ID/invoice/date columns as an issue
+- prep_steps: ordered must → should → optional; dataset-level steps first; \
+only recommend steps that address a real detected issue above
+- opportunities: 3-5 concrete analysis ideas specific to the column names \
+and inferred domain (e.g. Date + Price → time-series forecasting, \
+seasonality decomposition)
 - Return ONLY the JSON object, nothing else
 """
 
@@ -78,10 +89,13 @@ class EDAReviewChain:
         )
 
         raw = response.content.strip()
+
         if raw.startswith("```"):
-            raw = raw.split("```")[1]
+            parts = raw.split("```")
+            raw = parts[1]
             if raw.startswith("json"):
                 raw = raw[4:]
+        raw = raw.strip()
 
         data   = json.loads(raw)
         issues = [IssueItem.model_validate(i) for i in data.get("issues", [])]

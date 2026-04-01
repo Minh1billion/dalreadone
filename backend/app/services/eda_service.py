@@ -76,8 +76,8 @@ def run_eda_task(task_id: str, db: Session) -> None:
 
     try:
         content, filename = get_file_bytes(db, task["file_id"], task["user_id"])
-        df     = _load_dataframe(content, filename)
-        report = run_eda(df, source=filename, on_step=_update)
+        df                = _load_dataframe(content, filename)
+        report            = run_eda(df, source=filename, on_step=_update)
 
         task["status"]   = "done"
         task["step"]     = "done"
@@ -107,9 +107,7 @@ def _review_task_dict(
     }
 
 
-def create_review_task(
-    db: Session, eda_task_id: str, user_id: int
-) -> dict:
+def create_review_task(db: Session, eda_task_id: str, user_id: int) -> dict:
     eda_task = _get_task(EDA_NS, eda_task_id, user_id)
     if eda_task["status"] != "done":
         raise HTTPException(
@@ -153,7 +151,7 @@ def run_review_task(task_id: str) -> None:
 
         pipeline      = EDAReviewPipeline()
         review_result = asyncio.run(
-            pipeline.arun({"eda_report": eda_task["result"]})
+            pipeline.arun(eda_task["result"])
         )
 
         task["status"]   = "done"

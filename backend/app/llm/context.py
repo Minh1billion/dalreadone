@@ -29,16 +29,19 @@ class EDAContextBuilder:
         }
 
     def _overview(self, r: dict) -> dict:
-        schema = r.get("schema", {})
-        md     = r.get("missing_and_duplicates", {})
-        dq     = r.get("data_quality_score", {})
+        schema  = r.get("schema", {})
+        md      = r.get("missing_and_duplicates", {})
+        dq      = r.get("data_quality_score", {})
+        columns = schema.get("columns", [])
+
         return {
-            "source_file":    r.get("meta", {}).get("source_file"),
-            "rows":           schema.get("n_rows"),
-            "cols":           schema.get("n_cols"),
-            "memory_mb":      schema.get("memory_mb"),
-            "duplicate_pct":  md.get("duplicate_pct"),
-            "quality_score":  dq.get("overall_score"),
+            "source_file":   r.get("meta", {}).get("source_file"),
+            "rows":          schema.get("n_rows"),
+            "cols":          schema.get("n_cols"),
+            "memory_mb":     schema.get("memory_mb"),
+            "duplicate_pct": md.get("duplicate_pct"),
+            "quality_score": dq.get("overall_score"),
+            "column_names":  [c["name"] for c in columns],
         }
 
     def _columns(self, r: dict) -> list[dict]:

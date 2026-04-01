@@ -29,9 +29,9 @@ class EDAReviewPipeline:
 
     async def arun(self, eda_json: dict) -> EDAReviewResult:
         slim     = self._builder.build(eda_json)
-        overview = slim.pop("overview")
+        overview = slim["overview"]
+        
         logger.info("[1/2] Context: %d chars", len(json.dumps(slim)))
-
         issues, prep_steps, opps = await self._chain.arun(slim)
         logger.info(
             "[2/2] Issues: %d | Prep: %d | Cost: $%.8f",
