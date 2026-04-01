@@ -37,6 +37,10 @@ export function useFilePanel({ projectId, activeFileId, onSelectFile }: Options)
     inputRef.current?.click()
   }
 
+  function triggerRefresh() {
+    queryClient.invalidateQueries({ queryKey: ['files', projectId] })
+  }
+
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -111,6 +115,7 @@ export function useFilePanel({ projectId, activeFileId, onSelectFile }: Options)
     uploadProgress,
     uploadError,
     triggerFilePicker,
+    triggerRefresh,
     handleFileChange,
     handleDelete,
     preview:        previewQuery.data ?? null,

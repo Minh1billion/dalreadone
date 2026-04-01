@@ -27,7 +27,7 @@ PREPROCESS_NS  = "preprocess_task"
 PREPROCESS_TTL = Config.PREPROCESS_TASK_TTL
 
 RESULT_NS  = "preprocess_result"
-RESULT_TTL = 60 * 30  # 30 phút, chỉ cần tồn tại đến lúc confirm
+RESULT_TTL = 60 * 30
 
 PREVIEW_ROWS = 50
 
@@ -107,6 +107,25 @@ def _build_pipeline(steps_raw: list[dict]) -> Pipeline:
     return pipeline
 
 
+def _sanitize_preview(df: pd.DataFrame, n: int) -> list[dict]:
+    import math
+    import numpy as np
+
+    def _clean(v: Any) -> Any:
+        if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+            return None
+        if isinstance(v, np.integer):
+            return int(v)
+        if isinstance(v, np.floating):
+            f = float(v)
+            return None if (math.isnan(f) or math.isinf(f)) else f
+        if isinstance(v, np.bool_):
+            return bool(v)
+        return v
+
+    return [{k: _clean(v) for k, v in row.items()} for row in df.head(n).to_dict(orient="records")]
+
+
 def create_preprocess_task(db: Session, request: PreprocessRunRequest, user_id: int) -> dict:
     _get_file(db, request.file_id, user_id)
     task_id   = str(uuid.uuid4())
@@ -150,12 +169,13 @@ def run_preprocess_task(task_id: str, db: Session) -> None:
         _update("saving_result", 85)
         buf = io.BytesIO()
         df_out.to_csv(buf, index=False)
-        redis.set(RESULT_NS, task_id, buf.getvalue(), ttl=RESULT_TTL)
+        buf.seek(0)
+        redis.set(RESULT_NS, task_id, buf.read().decode("utf-8"), ttl=RESULT_TTL)
 
         task["status"]   = "done"
         task["step"]     = "done"
         task["progress"] = 100
-        task["preview"]  = df_out.head(PREVIEW_ROWS).to_dict(orient="records")
+        task["preview"]  = _sanitize_preview(df_out, PREVIEW_ROWS)
         redis.set(PREPROCESS_NS, task_id, task, ttl=PREPROCESS_TTL)
 
     except (TypeError, ValueError) as e:
@@ -175,8 +195,8 @@ def confirm_preprocess_task(task_id: str, user_id: int, db: Session) -> File:
     if task["status"] != "done":
         raise HTTPException(status_code=400, detail="Task is not done yet")
 
-    csv_bytes = redis.get(RESULT_NS, task_id)
-    if not csv_bytes:
+    csv_str = redis.get(RESULT_NS, task_id)
+    if not csv_str:
         raise HTTPException(status_code=410, detail="Result expired, please rerun")
 
     source_file = _get_file(db, task["file_id"], user_id)
@@ -184,6 +204,8 @@ def confirm_preprocess_task(task_id: str, user_id: int, db: Session) -> File:
 
     stem            = Path(source_file.filename).stem
     output_filename = f"{stem}_preprocessed.csv"
+
+    csv_bytes = csv_str.encode("utf-8") if isinstance(csv_str, str) else csv_str
 
     upload = UploadFile(
         filename=output_filename,

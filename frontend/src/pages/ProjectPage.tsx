@@ -2,8 +2,10 @@ import { useState, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { useFilePanel } from '../hooks/useFilePanel'
 import { useEDA } from '../hooks/useEDA'
+import { usePreprocess } from '../hooks/usePreprocess'
 import { FilePanelSidebar } from '../components/projects/FilePanelSidebar'
 import { EDASection } from '../components/projects/eda/EDASection'
+import { PreprocessSection } from '../components/projects/preprocess/PreprocessSection'
 
 const SIDEBAR_MIN     = 180
 const SIDEBAR_MAX     = 480
@@ -13,8 +15,8 @@ export default function ProjectPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const pid = Number(projectId)
 
-  const [activeFileId,  setActiveFileId]  = useState<number | null>(null)
-  const [sidebarWidth,  setSidebarWidth]  = useState(SIDEBAR_DEFAULT)
+  const [activeFileId, setActiveFileId] = useState<number | null>(null)
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT)
   const dragging = useRef(false)
   const startX   = useRef(0)
   const startW   = useRef(0)
@@ -22,10 +24,11 @@ export default function ProjectPage() {
   const panel = useFilePanel({
     projectId: pid,
     activeFileId,
-    onSelectFile: (id) => { setActiveFileId(id || null); eda.reset() },
+    onSelectFile: (id) => { setActiveFileId(id || null); eda.reset(); preprocess.reset() },
   })
 
   const eda        = useEDA(activeFileId)
+  const preprocess = usePreprocess(activeFileId)
   const activeFile = panel.files.find((f: any) => f.id === activeFileId)
 
   const onDragStart = useCallback((e: React.MouseEvent) => {
@@ -58,7 +61,7 @@ export default function ProjectPage() {
           uploadProgress={panel.uploadProgress ?? 0}
           uploadError={panel.uploadError}
           inputRef={panel.inputRef}
-          onSelectFile={(id) => { setActiveFileId(id === activeFileId ? null : id); eda.reset() }}
+          onSelectFile={(id) => { setActiveFileId(id === activeFileId ? null : id); eda.reset(); preprocess.reset() }}
           onDelete={panel.handleDelete}
           onTriggerFilePicker={panel.triggerFilePicker}
           onFileChange={panel.handleFileChange}
@@ -120,6 +123,12 @@ export default function ProjectPage() {
             </section>
 
             <EDASection eda={eda} activeFile={activeFile} />
+
+            <PreprocessSection
+              preprocess={preprocess}
+              preview={panel.preview}
+              onConfirmSuccess={panel.triggerRefresh}
+            />
 
           </div>
         )}
