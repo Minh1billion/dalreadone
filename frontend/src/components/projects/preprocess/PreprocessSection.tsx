@@ -59,9 +59,11 @@ function newStep(): DraftStep {
 }
 
 interface Props {
-  preprocess: ReturnType<typeof usePreprocess>
-  preview: { columns: string[]; rows: Record<string, unknown>[] } | null
+  preprocess:       ReturnType<typeof usePreprocess>
+  preview:          { columns: string[]; rows: Record<string, unknown>[] } | null
   onConfirmSuccess: () => void
+  collapsed:        boolean
+  onToggle:         () => void
 }
 
 const PREPROCESS_STEPS_LABELS: Record<string, string> = {
@@ -72,7 +74,7 @@ const PREPROCESS_STEPS_LABELS: Record<string, string> = {
   done:              'Done',
 }
 
-export function PreprocessSection({ preprocess, preview, onConfirmSuccess }: Props) {
+export function PreprocessSection({ preprocess, preview, onConfirmSuccess, collapsed, onToggle }: Props) {
   const [steps, setSteps] = useState<DraftStep[]>([])
   const [dirty, setDirty] = useState(false)
 
@@ -188,110 +190,123 @@ export function PreprocessSection({ preprocess, preview, onConfirmSuccess }: Pro
               Re-run
             </button>
           )}
+          <button
+            onClick={onToggle}
+            className='flex items-center justify-center w-6 h-6 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors ml-1'
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              {collapsed
+                ? <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                : <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              }
+            </svg>
+          </button>
         </div>
       </div>
 
-      <div className='p-5 space-y-4'>
-        {!preview && (
-          <p className='text-xs text-gray-400 text-center py-4'>Load a file preview first to start building a pipeline.</p>
-        )}
+      {!collapsed && (
+        <div className='p-5 space-y-4'>
+          {!preview && (
+            <p className='text-xs text-gray-400 text-center py-4'>Load a file preview first to start building a pipeline.</p>
+          )}
 
-        {preview && steps.length === 0 && !preprocess.isRunning && !preprocess.isDone && !preprocess.isError && (
-          <div className='flex flex-col items-center gap-3 py-8'>
-            <p className='text-sm text-gray-400'>Pipeline is empty</p>
-            <button
-              onClick={addStep}
-              className='text-xs px-3 py-1.5 rounded-md bg-primary-600 text-white hover:bg-primary-700 transition-colors'
-            >
-              + Add first step
-            </button>
-          </div>
-        )}
-
-        {dirty && preprocess.isDone && (
-          <div className='flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5 text-xs text-amber-700'>
-            <span className='shrink-0 mt-0.5'>⚠</span>
-            <span>Pipeline has been modified since last run. The preview below is outdated — re-run to update results before saving.</span>
-          </div>
-        )}
-
-        {hasIncomplete && (
-          <p className='text-[11px] text-amber-500'>Some steps are incomplete — select operation and strategy for each step before running.</p>
-        )}
-
-        {preprocess.runError && (
-          <div className='rounded-lg bg-red-50 border border-red-100 px-3 py-2.5 text-xs text-red-600'>
-            {preprocess.runError}
-          </div>
-        )}
-
-        {preprocess.confirmError && (
-          <div className='rounded-lg bg-red-50 border border-red-100 px-3 py-2.5 text-xs text-red-600'>
-            {preprocess.confirmError}
-          </div>
-        )}
-
-        {preprocess.confirmed && (
-          <div className='rounded-lg bg-green-50 border border-green-100 px-3 py-2.5 text-xs text-green-700'>
-            File saved to project successfully.
-          </div>
-        )}
-
-        {steps.length > 0 && !preprocess.isRunning && (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={steps.map(s => s.id)} strategy={verticalListSortingStrategy}>
-              <div className='space-y-2'>
-                {steps.map((step, i) => (
-                  <SortableStep
-                    key={step.id}
-                    step={step}
-                    index={i}
-                    colTypeMap={colTypeMap}
-                    onChange={updated => updateStep(step.id, updated)}
-                    onRemove={() => removeStep(step.id)}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-        )}
-
-        {preprocess.isRunning && (
-          <div className='space-y-2'>
-            <div className='flex justify-between text-xs text-gray-500 mb-1'>
-              <span>{PREPROCESS_STEPS_LABELS[preprocess.step ?? ''] ?? preprocess.step ?? 'Starting…'}</span>
-              <span>{preprocess.progress}%</span>
+          {preview && steps.length === 0 && !preprocess.isRunning && !preprocess.isDone && !preprocess.isError && (
+            <div className='flex flex-col items-center gap-3 py-8'>
+              <p className='text-sm text-gray-400'>Pipeline is empty</p>
+              <button
+                onClick={addStep}
+                className='text-xs px-3 py-1.5 rounded-md bg-primary-600 text-white hover:bg-primary-700 transition-colors'
+              >
+                + Add first step
+              </button>
             </div>
-            <div className='h-1.5 bg-gray-100 rounded-full overflow-hidden'>
-              <div
-                className='h-full bg-primary-500 rounded-full transition-all duration-500'
-                style={{ width: `${preprocess.progress}%` }}
+          )}
+
+          {dirty && preprocess.isDone && (
+            <div className='flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5 text-xs text-amber-700'>
+              <span className='shrink-0 mt-0.5'>⚠</span>
+              <span>Pipeline has been modified since last run. The preview below is outdated — re-run to update results before saving.</span>
+            </div>
+          )}
+
+          {hasIncomplete && (
+            <p className='text-[11px] text-amber-500'>Some steps are incomplete — select operation and strategy for each step before running.</p>
+          )}
+
+          {preprocess.runError && (
+            <div className='rounded-lg bg-red-50 border border-red-100 px-3 py-2.5 text-xs text-red-600'>
+              {preprocess.runError}
+            </div>
+          )}
+
+          {preprocess.confirmError && (
+            <div className='rounded-lg bg-red-50 border border-red-100 px-3 py-2.5 text-xs text-red-600'>
+              {preprocess.confirmError}
+            </div>
+          )}
+
+          {preprocess.confirmed && (
+            <div className='rounded-lg bg-green-50 border border-green-100 px-3 py-2.5 text-xs text-green-700'>
+              File saved to project successfully.
+            </div>
+          )}
+
+          {steps.length > 0 && !preprocess.isRunning && (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={steps.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                <div className='space-y-2'>
+                  {steps.map((step, i) => (
+                    <SortableStep
+                      key={step.id}
+                      step={step}
+                      index={i}
+                      colTypeMap={colTypeMap}
+                      onChange={updated => updateStep(step.id, updated)}
+                      onRemove={() => removeStep(step.id)}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
+
+          {preprocess.isRunning && (
+            <div className='space-y-2'>
+              <div className='flex justify-between text-xs text-gray-500 mb-1'>
+                <span>{PREPROCESS_STEPS_LABELS[preprocess.step ?? ''] ?? preprocess.step ?? 'Starting…'}</span>
+                <span>{preprocess.progress}%</span>
+              </div>
+              <div className='h-1.5 bg-gray-100 rounded-full overflow-hidden'>
+                <div
+                  className='h-full bg-primary-500 rounded-full transition-all duration-500'
+                  style={{ width: `${preprocess.progress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {preprocess.isError && (
+            <div className='rounded-lg bg-red-50 border border-red-100 p-4 text-sm text-red-600'>
+              <p className='font-medium mb-1'>Pipeline failed</p>
+              <p className='text-xs text-red-500'>{preprocess.taskError}</p>
+              <button onClick={() => preprocess.reset()} className='mt-3 text-xs underline hover:text-red-700'>
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {preprocess.isDone && preprocess.preview && (
+            <div className='space-y-2'>
+              <p className='text-xs font-medium text-gray-600'>Result preview</p>
+              <PreprocessPreview
+                preview={preprocess.preview as Record<string, unknown>[]}
+                transformedCols={transformedCols}
+                droppedCols={droppedCols}
               />
             </div>
-          </div>
-        )}
-
-        {preprocess.isError && (
-          <div className='rounded-lg bg-red-50 border border-red-100 p-4 text-sm text-red-600'>
-            <p className='font-medium mb-1'>Pipeline failed</p>
-            <p className='text-xs text-red-500'>{preprocess.taskError}</p>
-            <button onClick={() => preprocess.reset()} className='mt-3 text-xs underline hover:text-red-700'>
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        {preprocess.isDone && preprocess.preview && (
-          <div className='space-y-2'>
-            <p className='text-xs font-medium text-gray-600'>Result preview</p>
-            <PreprocessPreview
-              preview={preprocess.preview as Record<string, unknown>[]}
-              transformedCols={transformedCols}
-              droppedCols={droppedCols}
-            />
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </section>
   )
 }

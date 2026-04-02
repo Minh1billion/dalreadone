@@ -17,9 +17,13 @@ export default function ProjectPage() {
 
   const [activeFileId, setActiveFileId] = useState<number | null>(null)
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT)
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const dragging = useRef(false)
   const startX   = useRef(0)
   const startW   = useRef(0)
+
+  const toggleSection = (key: string) =>
+    setCollapsed(prev => ({ ...prev, [key]: !prev[key] }))
 
   const panel = useFilePanel({
     projectId: pid,
@@ -84,51 +88,75 @@ export default function ProjectPage() {
             <section className='bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden'>
               <div className='px-5 py-3 border-b border-gray-100 flex items-center justify-between'>
                 <h2 className='text-sm font-semibold text-gray-700'>Preview</h2>
-                {panel.preview && (
-                  <span className='text-xs text-gray-400'>
-                    {panel.preview.n_rows.toLocaleString()} rows × {panel.preview.n_cols} cols
-                  </span>
-                )}
-              </div>
-              {panel.previewLoading ? (
-                <div className='p-5 text-xs text-gray-400 animate-pulse'>Loading preview…</div>
-              ) : panel.previewError ? (
-                <div className='p-5 text-xs text-red-500'>{panel.previewError}</div>
-              ) : panel.preview ? (
-                <div className='overflow-x-auto'>
-                  <table className='w-full text-xs'>
-                    <thead>
-                      <tr className='bg-gray-50'>
-                        {panel.preview.columns.map((col: string) => (
-                          <th key={col} className='px-3 py-2 text-left font-medium text-gray-500 whitespace-nowrap border-b border-gray-100'>
-                            {col}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {panel.preview.rows.slice(0, 10).map((row: any, i: number) => (
-                        <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
-                          {panel.preview!.columns.map((col: string) => (
-                            <td key={col} className='px-3 py-2 text-gray-600 whitespace-nowrap max-w-40 truncate border-b border-gray-50'>
-                              {row[col] == null ? <span className='text-gray-300'>—</span> : String(row[col])}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className='flex items-center gap-3'>
+                  {panel.preview && !collapsed.preview && (
+                    <span className='text-xs text-gray-400'>
+                      {panel.preview.n_rows.toLocaleString()} rows × {panel.preview.n_cols} cols
+                    </span>
+                  )}
+                  <button
+                    onClick={() => toggleSection('preview')}
+                    className='flex items-center justify-center w-6 h-6 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors'
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      {collapsed.preview
+                        ? <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        : <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      }
+                    </svg>
+                  </button>
                 </div>
-              ) : null}
+              </div>
+              {!collapsed.preview && (
+                <>
+                  {panel.previewLoading ? (
+                    <div className='p-5 text-xs text-gray-400 animate-pulse'>Loading preview…</div>
+                  ) : panel.previewError ? (
+                    <div className='p-5 text-xs text-red-500'>{panel.previewError}</div>
+                  ) : panel.preview ? (
+                    <div className='overflow-x-auto'>
+                      <table className='w-full text-xs'>
+                        <thead>
+                          <tr className='bg-gray-50'>
+                            {panel.preview.columns.map((col: string) => (
+                              <th key={col} className='px-3 py-2 text-left font-medium text-gray-500 whitespace-nowrap border-b border-gray-100'>
+                                {col}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {panel.preview.rows.slice(0, 10).map((row: any, i: number) => (
+                            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                              {panel.preview!.columns.map((col: string) => (
+                                <td key={col} className='px-3 py-2 text-gray-600 whitespace-nowrap max-w-40 truncate border-b border-gray-50'>
+                                  {row[col] == null ? <span className='text-gray-300'>—</span> : String(row[col])}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
+                </>
+              )}
             </section>
 
-            <EDASection eda={eda} activeFile={activeFile} />
+            <EDASection
+              eda={eda}
+              activeFile={activeFile}
+              collapsed={collapsed.eda ?? false}
+              onToggle={() => toggleSection('eda')}
+            />
 
             <PreprocessSection
               key={activeFileId}
               preprocess={preprocess}
               preview={panel.preview}
               onConfirmSuccess={panel.triggerRefresh}
+              collapsed={collapsed.preprocess ?? false}
+              onToggle={() => toggleSection('preprocess')}
             />
 
           </div>
