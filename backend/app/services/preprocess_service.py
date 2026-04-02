@@ -20,6 +20,7 @@ from app.pipelines.preprocess import (
     EncodingOperation, OneHotStrategy, OrdinalStrategy, LabelStrategy,
     OutlierOperation, IQRStrategy, ZScoreStrategy, PercentileClipStrategy,
     ScalingOperation, MinMaxStrategy, StandardStrategy, RobustStrategy,
+    CustomCodeOperation, CustomCodeStrategy,
 )
 from app.models.preprocess_schema import PreprocessRunRequest, OperationConfig
 
@@ -95,6 +96,9 @@ def _build_operation(cfg: OperationConfig):
                 "robust":   lambda: RobustStrategy(),
             }[s.type]()
             return ScalingOperation(strategy, cols=cols)
+
+        case "custom_code":
+            return CustomCodeOperation(CustomCodeStrategy(code=s.code), cols=None)
 
 
 def _build_pipeline(steps_raw: list[dict]) -> Pipeline:

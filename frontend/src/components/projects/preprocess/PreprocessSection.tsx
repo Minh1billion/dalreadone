@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -77,6 +77,16 @@ const PREPROCESS_STEPS_LABELS: Record<string, string> = {
 export function PreprocessSection({ preprocess, preview, onConfirmSuccess, collapsed, onToggle }: Props) {
   const [steps, setSteps] = useState<DraftStep[]>([])
   const [dirty, setDirty] = useState(false)
+  const [showProgress, setShowProgress] = useState(false)
+
+  useEffect(() => {
+    if (preprocess.isRunning) {
+      setShowProgress(true)
+    } else if (preprocess.isDone || preprocess.isError) {
+      const t = setTimeout(() => setShowProgress(false), 400)
+      return () => clearTimeout(t)
+    }
+  }, [preprocess.isRunning, preprocess.isDone, preprocess.isError])
 
   const colTypeMap: ColTypeMap =
     preview ? inferColTypes(preview.columns, preview.rows as Record<string, unknown>[]) : {}
@@ -129,10 +139,15 @@ export function PreprocessSection({ preprocess, preview, onConfirmSuccess, colla
   const hasIncomplete = steps.some(s => !s.operation || !s.strategy)
   const canRun = validSteps.length > 0 && !hasIncomplete && !preprocess.isRunning
 
+  const previewCols = preprocess.preview?.length
+    ? Object.keys(preprocess.preview[0])
+    : preview?.columns ?? []
+
   const transformedCols = new Set<string>(
     steps.flatMap(s => {
       if (!s.strategy || s.strategy === 'drop_col') return []
-      return s.cols ?? []
+      if (s.operation === 'custom_code') return previewCols
+      return s.cols ?? (preview?.columns ?? [])
     })
   )
   const droppedCols = new Set<string>(
@@ -141,6 +156,11 @@ export function PreprocessSection({ preprocess, preview, onConfirmSuccess, colla
       return []
     })
   )
+
+  const displayProgress = preprocess.isRunning ? preprocess.progress : 100
+  const displayStep = preprocess.isRunning
+    ? (PREPROCESS_STEPS_LABELS[preprocess.step ?? ''] ?? preprocess.step ?? 'Starting…')
+    : 'Done'
 
   return (
     <section className='bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden'>
@@ -270,16 +290,16 @@ export function PreprocessSection({ preprocess, preview, onConfirmSuccess, colla
             </DndContext>
           )}
 
-          {preprocess.isRunning && (
+          {showProgress && (
             <div className='space-y-2'>
               <div className='flex justify-between text-xs text-gray-500 mb-1'>
-                <span>{PREPROCESS_STEPS_LABELS[preprocess.step ?? ''] ?? preprocess.step ?? 'Starting…'}</span>
-                <span>{preprocess.progress}%</span>
+                <span>{displayStep}</span>
+                <span>{displayProgress}%</span>
               </div>
               <div className='h-1.5 bg-gray-100 rounded-full overflow-hidden'>
                 <div
                   className='h-full bg-primary-500 rounded-full transition-all duration-500'
-                  style={{ width: `${preprocess.progress}%` }}
+                  style={{ width: `${displayProgress}%` }}
                 />
               </div>
             </div>

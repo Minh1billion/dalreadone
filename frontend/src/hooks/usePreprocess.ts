@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { preprocessApi, type OperationConfig, type PreprocessTask } from '../api/preprocess'
 
@@ -10,16 +10,20 @@ export function usePreprocess(fileId: number | null) {
   const [confirming,   setConfirming]   = useState(false)
   const [confirmError, setConfirmError] = useState<string | null>(null)
   const [confirmed,    setConfirmed]    = useState(false)
+  const [finalTask,    setFinalTask]    = useState<PreprocessTask | null>(null)
+  const fetchingFinal  = useRef(false)
 
   useEffect(() => {
-      setTaskId(null)
-      setRunning(false)
-      setRunError(null)
-      setConfirming(false)
-      setConfirmError(null)
-      setConfirmed(false)
-      qc.removeQueries({ queryKey: ['preprocess-task'] })
-    }, [fileId, qc])
+    setTaskId(null)
+    setRunning(false)
+    setRunError(null)
+    setConfirming(false)
+    setConfirmError(null)
+    setConfirmed(false)
+    setFinalTask(null)
+    fetchingFinal.current = false
+    qc.removeQueries({ queryKey: ['preprocess-task'] })
+  }, [fileId, qc])
 
   const taskQuery = useQuery<PreprocessTask>({
     queryKey: ['preprocess-task', taskId],
@@ -34,17 +38,32 @@ export function usePreprocess(fileId: number | null) {
     },
   })
 
+  useEffect(() => {
+    const data = taskQuery.data
+    if (!data) return
+
+    if ((data.status === 'done' || data.status === 'error') && !fetchingFinal.current) {
+      fetchingFinal.current = true
+      preprocessApi.status(data.task_id).then(res => {
+        setFinalTask(res.data)
+      }).catch(() => {
+        setFinalTask(data)
+      })
+    }
+  }, [taskQuery.data?.status, taskQuery.data?.task_id])
+
   const run = useCallback(async (steps: OperationConfig[]) => {
     if (!fileId) return
     setRunning(true)
     setRunError(null)
     setConfirmed(false)
     setConfirmError(null)
-    setTaskId(null)
-    qc.removeQueries({ queryKey: ['preprocess-task'] })
+    setFinalTask(null)
+    fetchingFinal.current = false
 
     try {
       const { data } = await preprocessApi.run(fileId, steps)
+      qc.removeQueries({ queryKey: ['preprocess-task'] })
       setTaskId(data.task_id)
     } catch (err: any) {
       setRunError(err?.response?.data?.detail ?? err?.message ?? 'Failed to start preprocessing')
@@ -62,6 +81,8 @@ export function usePreprocess(fileId: number | null) {
       await preprocessApi.confirm(taskId)
       setConfirmed(true)
       setTaskId(null)
+      setFinalTask(null)
+      fetchingFinal.current = false
       qc.removeQueries({ queryKey: ['preprocess-task'] })
       onSuccess?.()
     } catch (err: any) {
@@ -77,6 +98,8 @@ export function usePreprocess(fileId: number | null) {
       qc.removeQueries({ queryKey: ['preprocess-task'] })
     }
     setTaskId(null)
+    setFinalTask(null)
+    fetchingFinal.current = false
     setRunError(null)
     setConfirmError(null)
     setConfirmed(false)
@@ -84,13 +107,15 @@ export function usePreprocess(fileId: number | null) {
 
   const reset = useCallback(() => {
     setTaskId(null)
+    setFinalTask(null)
+    fetchingFinal.current = false
     setRunError(null)
     setConfirmError(null)
     setConfirmed(false)
     qc.removeQueries({ queryKey: ['preprocess-task'] })
   }, [qc])
 
-  const task = taskQuery.data ?? null
+  const task = finalTask ?? taskQuery.data ?? null
 
   return {
     run,
@@ -110,7 +135,7 @@ export function usePreprocess(fileId: number | null) {
     preview:   task?.preview ?? null,
     taskError: task?.error ?? null,
     isPending: task?.status === 'pending',
-    isRunning: task?.status === 'pending' || task?.status === 'running',
+    isRunning: running || task?.status === 'pending' || task?.status === 'running',
     isDone:    task?.status === 'done',
     isError:   task?.status === 'error',
   }

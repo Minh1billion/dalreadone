@@ -27,6 +27,10 @@ from .preprocess_scaling_operation import (
     StandardStrategy,
     RobustStrategy,
 )
+from .preprocess_custom_operation import (
+    CustomCodeOperation,
+    CustomCodeStrategy,
+)
 
 __all__ = [
     "Pipeline",
@@ -35,4 +39,5 @@ __all__ = [
     "EncodingOperation", "OneHotStrategy", "OrdinalStrategy", "LabelStrategy",
     "OutlierOperation", "IQRStrategy", "ZScoreStrategy", "PercentileClipStrategy",
     "ScalingOperation", "MinMaxStrategy", "StandardStrategy", "RobustStrategy",
+    "CustomCodeOperation", "CustomCodeStrategy",
 ]

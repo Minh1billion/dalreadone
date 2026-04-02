@@ -20,10 +20,11 @@ export type PreprocessConfirmed = {
 }
 
 export type OperationConfig =
-  | { operation: 'missing'; strategy: MissingStrategyConfig; cols: string[] | null }
-  | { operation: 'encoding'; strategy: EncodingStrategyConfig; cols: string[] | null }
-  | { operation: 'outlier'; strategy: OutlierStrategyConfig; cols: string[] | null }
-  | { operation: 'scaling'; strategy: ScalingStrategyConfig; cols: string[] | null }
+  | { operation: 'missing';     strategy: MissingStrategyConfig;    cols: string[] | null }
+  | { operation: 'encoding';    strategy: EncodingStrategyConfig;   cols: string[] | null }
+  | { operation: 'outlier';     strategy: OutlierStrategyConfig;    cols: string[] | null }
+  | { operation: 'scaling';     strategy: ScalingStrategyConfig;    cols: string[] | null }
+  | { operation: 'custom_code'; strategy: CustomCodeStrategyConfig; cols: null }
 
 export type MissingStrategyConfig =
   | { type: 'mean' }
@@ -47,6 +48,11 @@ export type ScalingStrategyConfig =
   | { type: 'minmax'; feature_range: [number, number] }
   | { type: 'standard' }
   | { type: 'robust' }
+
+export type CustomCodeStrategyConfig = {
+  type: 'custom_code'
+  code: string
+}
 
 export const preprocessApi = {
   run: (fileId: number, steps: OperationConfig[]) =>

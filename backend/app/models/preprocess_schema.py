@@ -1,5 +1,5 @@
-from typing import Any, Literal
-from pydantic import BaseModel, model_validator
+from typing import Any, Literal, Annotated
+from pydantic import BaseModel, model_validator, Field
 
 
 class MeanStrategyConfig(BaseModel):
@@ -55,6 +55,9 @@ class StandardStrategyConfig(BaseModel):
 class RobustStrategyConfig(BaseModel):
     type: Literal["robust"]
 
+class CustomCodeStrategyConfig(BaseModel):
+    type: Literal["custom_code"]
+    code: str
 
 MissingStrategyConfig = (
     MeanStrategyConfig | MedianStrategyConfig | ModeStrategyConfig |
@@ -85,12 +88,16 @@ class ScalingOperationConfig(BaseModel):
     strategy: ScalingStrategyConfig
     cols: list[str] | None = None
 
+class CustomCodeOperationConfig(BaseModel):
+    operation: Literal["custom_code"]
+    strategy: CustomCodeStrategyConfig
+    cols: None = None
 
-OperationConfig = (
-    MissingOperationConfig | EncodingOperationConfig |
-    OutlierOperationConfig | ScalingOperationConfig
-)
-
+OperationConfig = Annotated[
+    MissingOperationConfig | EncodingOperationConfig | OutlierOperationConfig
+    | ScalingOperationConfig | CustomCodeOperationConfig,
+    Field(discriminator="operation"),
+]
 
 class PreprocessRunRequest(BaseModel):
     file_id: int
@@ -109,6 +116,7 @@ class PreprocessTaskResponse(BaseModel):
     status: str
     step: str | None
     progress: int
+    preview: list[dict] | None = None
     error: str | None = None
     created_at: str
 
