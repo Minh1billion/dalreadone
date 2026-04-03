@@ -53,7 +53,7 @@ Each layer must map to a concrete strategy class.
 
 ### custom (use when NO existing strategy covers the transformation)
 Write a Python function `transform(df: pd.DataFrame) -> pd.DataFrame`.
-`pd` and `math` are pre-injected. No import statements allowed. One transformation per custom layer.
+`pd` is pre-injected. No other imports allowed. One transformation per custom layer.
 
 ---
 
@@ -62,11 +62,18 @@ Write a Python function `transform(df: pd.DataFrame) -> pd.DataFrame`.
 Use a custom layer whenever the transformation logic requires:
 
 1. **Log / power transform** - column is severely right-skewed (skewness > 1) \
-   and StandardStrategy alone is insufficient. \
-   `pd` and `math` are pre-injected — do NOT write any import statements:
+   and StandardStrategy alone is insufficient:
    ```
    def transform(df):
        df = df.copy()
+       df["salary"] = np.log1p(df["salary"].clip(lower=0))
+       return df
+   ```
+   Note: since np is not injected, use pd-only equivalent:
+   ```
+   def transform(df):
+       df = df.copy()
+       import math
        df["salary"] = df["salary"].clip(lower=0).apply(lambda x: math.log1p(x))
        return df
    ```
@@ -99,7 +106,7 @@ Use a custom layer whenever the transformation logic requires:
    ```
 
 5. **Class rebalancing weights** - target label column has class imbalance \
-   (zeros_pct > 10% or one class > 80%); produce a sample_weight column for downstream:
+   (z% > 10% or one class > 80%); produce a sample_weight column for downstream:
    ```
    def transform(df):
        df = df.copy()
@@ -124,7 +131,7 @@ Use a custom layer whenever the transformation logic requires:
 
 ## Mandatory classification rules before building the pipeline
 
-1. Read `col_roles.likely_categorical_numeric` first.
+1. Read `col_roles.lc_numeric` first.
    - These columns MUST go through encoding, NOT outlier handling or scaling.
    - Use LabelStrategy for binary/multiclass targets (e.g. 0/1/2 labels).
    - Use OrdinalStrategy if there is a clear order.
@@ -143,15 +150,15 @@ Use a custom layer whenever the transformation logic requires:
 
 - **Order: missing → outlier → encoding → scaling → custom**
 - Only suggest layers for issues actually evidenced in the EDA numbers
-- `cols` must contain ONLY column names present in `overview.column_names`
+- `cols` must contain ONLY column names present in `overview.col_names`
 - For encoding layers: never also suggest scaling on the same cols
 - For scaling layers: only numeric cols not encoded in a prior layer
-- For outlier layers: exclude cols that appear in `col_roles.likely_categorical_numeric`
+- For outlier layers: exclude cols that appear in `col_roles.lc_numeric`
 - `params` must match the strategy constructor signature exactly
 - Prefer named cols over `null` (null = "all applicable" which is risky)
 - custom_layers: only when no available strategy handles the transformation
 - custom code signature: `def transform(df: pd.DataFrame) -> pd.DataFrame:`
-- NO import statements allowed — `pd` and `math` are pre-injected and ready to use directly
+- No imports in custom code - pd is pre-injected
 - If skewness > 1 on a numeric column, prefer a log-transform custom layer \
   over StandardStrategy alone
 - If a categorical column has cardinality > 15, prefer frequency-encoding custom layer \

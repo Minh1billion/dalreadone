@@ -14,6 +14,7 @@ _ALLOWED_BUILTINS = {
     "float", "int", "isinstance", "len", "list", "map", "max",
     "min", "print", "range", "round", "set", "sorted", "str",
     "sum", "tuple", "type", "zip", "None", "True", "False",
+    "__import__",
 }
 
 _ALLOWED_IMPORTS: dict[str, object] = {

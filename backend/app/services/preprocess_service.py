@@ -268,9 +268,16 @@ def _custom_to_step(layer) -> dict:
     }
 
 
-def _suggest_task_dict(task_id: str, user_id: int, review_task_id: str | None = None, eda_task_id: str | None = None) -> dict[str, Any]:
+def _suggest_task_dict(
+    task_id: str,
+    user_id: int,
+    source: str,
+    review_task_id: str | None = None,
+    eda_task_id: str | None = None,
+) -> dict[str, Any]:
     return {
         "task_id":        task_id,
+        "source":         source,
         "review_task_id": review_task_id,
         "eda_task_id":    eda_task_id,
         "user_id":        user_id,
@@ -296,7 +303,14 @@ def create_suggest_task(review_task_id: str, user_id: int) -> dict:
         raise HTTPException(status_code=409, detail="Review result is empty")
 
     task_id = str(uuid.uuid4())
-    task    = _suggest_task_dict(task_id, user_id, review_task_id=review_task_id)
+
+    task = _suggest_task_dict(
+        task_id,
+        user_id,
+        source="review",
+        review_task_id=review_task_id
+    )
+
     redis.set(SUGGEST_NS, task_id, task, ttl=SUGGEST_TTL)
     return task
 
@@ -313,7 +327,14 @@ def create_suggest_task_from_eda(eda_task_id: str, user_id: int) -> dict:
         raise HTTPException(status_code=409, detail="EDA result is empty")
 
     task_id = str(uuid.uuid4())
-    task    = _suggest_task_dict(task_id, user_id, eda_task_id=eda_task_id)
+
+    task = _suggest_task_dict(
+        task_id,
+        user_id,
+        source="eda",
+        eda_task_id=eda_task_id
+    )
+
     redis.set(SUGGEST_NS, task_id, task, ttl=SUGGEST_TTL)
     return task
 
@@ -341,27 +362,48 @@ def run_suggest_task(task_id: str) -> None:
     try:
         _update(10)
 
-        if task.get("review_task_id"):
+        if sys.platform == "win32":
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+        runner = PreprocessSuggestPipeline()
+
+        source = task.get("source")
+        if not source:
+            if task.get("review_task_id"):
+                source = "review"
+            elif task.get("eda_task_id"):
+                source = "eda"
+            else:
+                raise ValueError("Cannot determine task source")
+
+        if source == "review":
             review_task = redis.get(REVIEW_NS, task["review_task_id"])
             if not review_task or review_task["result"] is None:
-                raise ValueError("Review result not found in cache")
-            _update(20)
+                raise ValueError("Review result not found")
+
+            _update(30)
+
             review_result = EDAReviewResult.model_validate(
                 {**review_task["result"], "usage": review_task.get("usage", {})}
             )
-            if sys.platform == "win32":
-                asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-            runner = PreprocessSuggestPipeline()
-            suggestion, _, ast_errors = asyncio.run(runner.arun_from_review(review_result))
-        else:
+
+            suggestion, _, ast_errors = asyncio.run(
+                runner.arun_from_review(review_result)
+            )
+
+        elif source == "eda":
             eda_task = redis.get(EDA_NS, task["eda_task_id"])
             if not eda_task or eda_task["result"] is None:
-                raise ValueError("EDA result not found in cache")
-            _update(20)
-            if sys.platform == "win32":
-                asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-            runner = PreprocessSuggestPipeline()
-            suggestion, _, ast_errors = asyncio.run(runner.arun_from_eda(eda_task["result"]))
+                raise ValueError("EDA result not found")
+
+            _update(30)
+
+            suggestion, _, ast_errors = asyncio.run(
+                runner.arun_from_eda(eda_task["result"])
+            )
+
+        else:
+            raise ValueError(f"Unknown source: {source}")
 
         _update(90)
 
@@ -373,9 +415,16 @@ def run_suggest_task(task_id: str) -> None:
         task["result"]     = steps
         task["usage"]      = suggestion.usage
         task["ast_errors"] = ast_errors or None
+
         redis.set(SUGGEST_NS, task_id, task, ttl=SUGGEST_TTL)
 
     except Exception as e:
         task["status"] = "error"
         task["error"]  = str(e)
+        redis.set(SUGGEST_NS, task_id, task, ttl=SUGGEST_TTL)
+        
+        print("❌ SUGGEST ERROR:")
+        import traceback
+        traceback.print_exc()   # ✅ THÊM DÒNG NÀY
+
         redis.set(SUGGEST_NS, task_id, task, ttl=SUGGEST_TTL)

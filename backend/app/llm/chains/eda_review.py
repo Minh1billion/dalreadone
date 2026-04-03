@@ -42,19 +42,19 @@ issues and recommend the correct preprocessing steps to address them.
 }}
 
 ## Step 1 - Understand the dataset domain
-Before flagging anything, read `overview.column_names` and infer the domain \
+Before flagging anything, read `overview.col_names` and infer the domain \
 (e.g. job market data, e-commerce transactions, IoT sensor readings). \
 Tailor every observation and opportunity to that domain.
 
 ## Step 2 - Column type classification (do this before anything else)
 Read `col_roles` carefully:
 
-- `col_roles.likely_categorical_numeric`: These columns have numeric dtype (int/float) \
+- `col_roles.lc_numeric`: These columns have numeric dtype (int/float) \
 but very low cardinality. They are LABEL columns, not measurements. Rules:
   * DO NOT flag them for outliers or skewness - those stats are meaningless for labels
   * DO NOT recommend scaling on them
   * DO recommend encoding (LabelStrategy or OrdinalStrategy) if they are target/ordinal labels
-  * DO flag class imbalance if zeros_pct is high (> 5%) or one value dominates > 80%
+  * DO flag class imbalance if z% is high (> 5%) or one value dominates > 80%
   * Example: job_survival_class with values 0/1/2 is a multiclass label, not salary data
 
 - `col_roles.datetime`: Flag if there are gaps, irregular intervals, or future dates \
@@ -71,7 +71,7 @@ Flag an issue ONLY when evidenced by the actual numbers:
 - null_pct > 0 → flag (severity: high if > 20%, medium if 5-20%, low if < 5%)
 
 **Outliers** (numeric non-label columns only)
-- outlier_pct > 5% → high, 1-5% → medium, < 1% → low
+- out% > 5% → high, 1-5% → medium, < 1% → low
 - Also check: has_negatives=true in a column where negatives are invalid \
   (salary, price, count, age → must be positive)
 
@@ -83,7 +83,7 @@ Flag an issue ONLY when evidenced by the actual numbers:
 - duplicate_pct > 1% → flag at dataset level
 
 **Class imbalance** (for likely_cat columns and boolean columns)
-- zeros_pct > 10% → flag - may indicate missing class representation
+- z% > 10% → flag - may indicate missing class representation
 - One category dominates top_3 with pct > 80% → flag imbalance
 
 **Cardinality**
@@ -123,8 +123,8 @@ the preprocessing steps above?
 - Return ONLY the JSON object, nothing else
 - Do NOT invent issues that are not supported by numbers in the EDA
 - Do NOT flag ID/invoice/date columns for high cardinality
-- Do NOT apply outlier or scaling rules to likely_categorical_numeric columns
-- Do NOT omit encoding recommendations for likely_categorical_numeric columns \
+- Do NOT apply outlier or scaling rules to lc_numeric columns
+- Do NOT omit encoding recommendations for lc_numeric columns \
   that are clearly label/target columns
 """
 

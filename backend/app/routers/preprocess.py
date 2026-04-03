@@ -100,9 +100,19 @@ def get_suggest_status(
     task  = get_suggest_task(task_id, current_user.id)
     done  = task["status"] == "done"
     error = task["status"] == "error"
+
+    source = task.get("source")
+    if not source:
+        if task.get("review_task_id"):
+            source = "review"
+        elif task.get("eda_task_id"):
+            source = "eda"
+
     return {
         "task_id":        task["task_id"],
-        "review_task_id": task["review_task_id"],
+        "source":         source,
+        "review_task_id": task.get("review_task_id"),
+        "eda_task_id":    task.get("eda_task_id"),
         "status":         task["status"],
         "progress":       task["progress"],
         "steps":          task["result"]     if done  else None,

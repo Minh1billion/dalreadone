@@ -37,12 +37,22 @@ def _validate_custom_layers(custom_layers: list[CustomLayer]) -> list[str]:
     return errors
 
 
-def _build_col_meta(slim: dict) -> dict[str, str]:
-    """col -> short_type map built from the slim context."""
-    return {
-        entry["col"]: entry["type"]
-        for entry in slim.get("columns", [])
-    }
+def _build_col_meta(slim):
+    col_meta = {}
+
+    for entry in slim.get("columns", []):
+        if "col" not in entry:
+            continue
+
+        if "type" not in entry:
+            print("❌ Missing type in EDA entry:", entry)
+            col_type = entry.get("dtype", "unknown")
+        else:
+            col_type = entry["type"]
+
+        col_meta[entry["col"]] = col_type
+
+    return col_meta
 
 
 def _make_astype_str_layer(cols: list[str]) -> CustomLayer:
@@ -51,7 +61,7 @@ def _make_astype_str_layer(cols: list[str]) -> CustomLayer:
 
     Injected before any encoding layer that targets likely_cat numeric columns,
     because build_pipeline() validates that encoding strategies receive
-    categorical (object/str) dtype — not int/float.
+    categorical (object/str) dtype - not int/float.
     """
     cols_repr = repr(cols)
     code = (
@@ -66,7 +76,7 @@ def _make_astype_str_layer(cols: list[str]) -> CustomLayer:
         cols=cols,
         code=code,
         rationale=(
-            f"Cast {cols} from numeric to str before encoding — "
+            f"Cast {cols} from numeric to str before encoding - "
             "these columns have low cardinality and are categorical labels, "
             "not continuous measurements."
         ),
@@ -127,7 +137,7 @@ def _guard_layers(
             if bad:
                 warnings.append(
                     f"[guard] {layer.strategy}: removed pure-numeric cols {bad} "
-                    f"(not likely_cat) — encoding requires categorical input"
+                    f"(not likely_cat) - encoding requires categorical input"
                 )
                 cols = [c for c in cols if c not in bad]
 
@@ -142,7 +152,7 @@ def _guard_layers(
             bad_cat = [c for c in cols if c in likely_cat_cols]
             if bad_cat:
                 warnings.append(
-                    f"[guard] {layer.strategy}: removed likely_cat cols {bad_cat} — "
+                    f"[guard] {layer.strategy}: removed likely_cat cols {bad_cat} - "
                     "label columns must not be scaled"
                 )
                 cols = [c for c in cols if c not in bad_cat]
@@ -151,14 +161,14 @@ def _guard_layers(
             bad = [c for c in cols if c in likely_cat_cols]
             if bad:
                 warnings.append(
-                    f"[guard] {layer.strategy}: removed likely_cat cols {bad} — "
+                    f"[guard] {layer.strategy}: removed likely_cat cols {bad} - "
                     "outlier stats are meaningless for label columns"
                 )
                 cols = [c for c in cols if c not in bad]
 
         if not cols:
             warnings.append(
-                f"[guard] {layer.strategy} dropped — no valid cols remain after filtering"
+                f"[guard] {layer.strategy} dropped - no valid cols remain after filtering"
             )
             continue
 
@@ -193,7 +203,7 @@ class PreprocessSuggestPipeline:
         layers, custom = await self._chain.arun(slim)
 
         col_meta        = _build_col_meta(slim)
-        likely_cat_cols = slim.get("col_roles", {}).get("likely_categorical_numeric", [])
+        likely_cat_cols = slim.get("col_roles", {}).get("lc_numeric", [])
         layers, custom, guard_warnings = _guard_layers(
             layers, custom, col_meta, likely_cat_cols
         )
@@ -233,14 +243,14 @@ class PreprocessSuggestPipeline:
             slim["prep_steps"] = [s.model_dump() for s in review.prep_steps]
         else:
             logger.warning(
-                "[suggest] eda_json not provided — running with reduced context. "
+                "[suggest] eda_json not provided - running with reduced context. "
                 "Pass eda_json to arun_from_review() for best results."
             )
             slim = {
                 "overview":   review.overview,
                 "col_roles":  {
-                    "likely_categorical_numeric": review.overview.get(
-                        "likely_categorical_numeric_cols", []
+                    "lc_numeric": review.overview.get(
+                        "lc_cols", []
                     ),
                     "datetime": review.overview.get("datetime_cols", []),
                     "boolean":  [],
@@ -254,7 +264,7 @@ class PreprocessSuggestPipeline:
         layers, custom = await self._chain.arun(slim)
 
         col_meta        = _build_col_meta(slim)
-        likely_cat_cols = slim.get("col_roles", {}).get("likely_categorical_numeric", [])
+        likely_cat_cols = slim.get("col_roles", {}).get("lc_numeric", [])
         layers, custom, guard_warnings = _guard_layers(
             layers, custom, col_meta, likely_cat_cols
         )

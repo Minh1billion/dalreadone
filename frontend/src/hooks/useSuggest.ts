@@ -85,6 +85,7 @@ export function useSuggest() {
     steps:     task?.steps ?? null as OperationConfig[] | null,
     astErrors: task?.ast_errors ?? null,
     taskError: task?.error ?? null,
+    usage:     task?.usage ?? null,
     isRunning: starting || task?.status === 'pending' || task?.status === 'running',
     isDone:    task?.status === 'done',
     isError:   task?.status === 'error',

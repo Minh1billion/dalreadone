@@ -21,6 +21,7 @@ import type { DraftStep, ColTypeMap } from './PreprocessTypes'
 import { draftToConfig, inferColTypes, suggestToSteps } from './PreprocessTypes'
 import { PreprocessStepCard } from './PreprocessStepCard'
 import { PreprocessPreview } from './PreprocessPreview'
+import { CostBadge } from '../../shared/CostBadge'
 
 function SortableStep({
   step, index, colTypeMap, onChange, onRemove,
@@ -196,6 +197,11 @@ export function PreprocessSection({
         <h2 className='text-sm font-semibold text-gray-700'>Preprocessing Pipeline</h2>
         <div className='flex items-center gap-2'>
 
+          {/* Cost badge - shown after suggest completes */}
+          {suggest.isDone && suggest.usage && (
+            <CostBadge usage={suggest.usage} label='Suggest' />
+          )}
+
           {preview && !preprocess.isRunning && (
             <button
               onClick={handleSuggest}
@@ -342,12 +348,12 @@ export function PreprocessSection({
           {dirty && preprocess.isDone && (
             <div className='flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5 text-xs text-amber-700'>
               <span className='shrink-0 mt-0.5'>⚠</span>
-              <span>Pipeline has been modified since last run. The preview below is outdated — re-run to update results before saving.</span>
+              <span>Pipeline has been modified since last run. The preview below is outdated - re-run to update results before saving.</span>
             </div>
           )}
 
           {hasIncomplete && (
-            <p className='text-[11px] text-amber-500'>Some steps are incomplete — select operation and strategy for each step before running.</p>
+            <p className='text-[11px] text-amber-500'>Some steps are incomplete - select operation and strategy for each step before running.</p>
           )}
 
           {preprocess.runError && (

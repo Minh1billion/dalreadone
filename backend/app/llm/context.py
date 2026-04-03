@@ -3,7 +3,6 @@ from __future__ import annotations
 from app.core.config import Config
 
 
-# Raw dtype → short label for LLM readability
 _DTYPE_SHORT: dict[str, str] = {
     "object":          "str",
     "string":          "str",
@@ -16,80 +15,75 @@ _DTYPE_SHORT: dict[str, str] = {
     "uint64":          "int",
     "uint32":          "int",
     "bool":            "bool",
-    "category":        "category",
-    "datetime64[ns]":  "datetime",
-    "datetime64[us]":  "datetime",
-    "timedelta64[ns]": "timedelta",
+    "category":        "cat",
+    "datetime64[ns]":  "dt",
+    "datetime64[us]":  "dt",
+    "timedelta64[ns]": "td",
 }
 
-# int/float columns with ≤ this many unique values are likely categorical labels
 _LOW_CARD_NUMERIC_THRESHOLD = 20
-
-# str/object columns with > this many unique values are likely IDs
-_ID_CARDINALITY_THRESHOLD = 1_000
+_ID_CARDINALITY_THRESHOLD   = 1_000
+_CORR_MIN_ABS               = 0.3
+_CORR_MAX_PAIRS             = 8
+_CAT_TOP_N                  = 2
 
 
 class EDAContextBuilder:
     def build(self, report: dict) -> dict:
         r = report.get("eda_report", report)
 
-        columns = self._columns(r)
-
-        # Pre-compute column classification lists for prompt-level awareness
-        likely_cat_cols = [c["col"] for c in columns if c.get("likely_cat")]
-        datetime_cols   = [c["col"] for c in columns if c["type"] == "datetime"]
-        bool_cols       = [c["col"] for c in columns if c["type"] == "bool"]
+        columns         = self._columns(r)
+        likely_cat_cols = [c["col"] for c in columns if c.get("lc")]
+        datetime_cols   = [c["col"] for c in columns if c["t"] == "dt"]
+        bool_cols       = [c["col"] for c in columns if c["t"] == "bool"]
         id_cols         = [
             c["col"] for c in columns
-            if c["type"] == "str" and c["unique"] > _ID_CARDINALITY_THRESHOLD
+            if c["t"] == "str" and c["u"] > _ID_CARDINALITY_THRESHOLD
         ]
 
         return {
-            "overview":        self._overview(r, likely_cat_cols, datetime_cols),
-            "columns":         columns,
+            "overview":     self._overview(r, likely_cat_cols, datetime_cols),
             "col_roles": {
-                "likely_categorical_numeric": likely_cat_cols,
-                "datetime":                  datetime_cols,
-                "boolean":                   bool_cols,
-                "id_like":                   id_cols,
+                "lc_numeric": likely_cat_cols,   # treat as label, not measurement
+                "datetime":   datetime_cols,
+                "boolean":    bool_cols,
+                "id_like":    id_cols,
             },
-            "numeric":         self._numeric(r, likely_cat_cols),
-            "categorical":     self._categorical(r, likely_cat_cols, r),
-            "distributions":   self._distributions(r),
-            "correlations":    self._correlations(r),
-            "datetime":        self._datetime(r),
-            "quality":         self._quality(r),
+            "columns":      columns,
+            "numeric":      self._numeric(r, likely_cat_cols),
+            "categorical":  self._categorical(r, likely_cat_cols, r),
+            "correlations": self._correlations(r),
+            "datetime":     self._datetime(r),
+            "quality":      self._quality(r),
+            # distributions omitted - shape/normality captured in numeric.skew
+            # and numeric.outlier_pct; histogram bins are never useful for LLM
         }
+
 
     def _overview(self, r: dict, likely_cat_cols: list[str], datetime_cols: list[str]) -> dict:
-        schema  = r.get("schema", {})
-        md      = r.get("missing_and_duplicates", {})
-        dq      = r.get("data_quality_score", {})
-        columns = schema.get("columns", [])
-
+        schema = r.get("schema", {})
+        md     = r.get("missing_and_duplicates", {})
+        dq     = r.get("data_quality_score", {})
         return {
-            "source_file":          r.get("meta", {}).get("source_file"),
-            "rows":                 schema.get("n_rows"),
-            "cols":                 schema.get("n_cols"),
-            "memory_mb":            schema.get("memory_mb"),
-            "duplicate_pct":        md.get("duplicate_pct"),
-            "quality_score":        dq.get("overall_score"),
-            "column_names":         [c["name"] for c in columns],
-            "likely_categorical_numeric_cols": likely_cat_cols,
-            "datetime_cols":                   datetime_cols,
+            "file":      r.get("meta", {}).get("source_file"),
+            "rows":      schema.get("n_rows"),
+            "cols":      schema.get("n_cols"),
+            "dup_pct":   md.get("duplicate_pct"),
+            "q_score":   dq.get("overall_score"),
+            "col_names": [c["name"] for c in schema.get("columns", [])],
+            "lc_cols":   likely_cat_cols,   # quick ref - full detail in col_roles
+            "dt_cols":   datetime_cols,
         }
+
 
     def _columns(self, r: dict) -> list[dict]:
         """
-        Flatten schema columns to an enriched compact table.
-
-        Each entry includes:
-        - dtype: raw pandas dtype string (e.g. "int64", "object")
-        - type:  short alias (e.g. "int", "str", "datetime")
-        - unique: number of unique values
-        - null_pct: % of nulls
-        - likely_cat: True if numeric but cardinality ≤ threshold →
-            the LLM must treat this column as a label, not a measurement
+        Compact column table.  Short keys to save tokens:
+          col → col name
+          t   → short type (str/int/float/bool/dt/cat)
+          u   → unique count
+          np  → null_pct
+          lc  → True if numeric-but-low-cardinality (treat as label)
         """
         missing = r.get("missing_and_duplicates", {}).get("columns", {})
         out = []
@@ -97,143 +91,101 @@ class EDAContextBuilder:
             raw_dtype  = col.get("dtype", "object")
             short_type = _DTYPE_SHORT.get(raw_dtype, raw_dtype)
             n_unique   = col.get("n_unique", 0)
+            is_numeric = short_type in ("int", "float")
+            likely_cat = is_numeric and n_unique <= _LOW_CARD_NUMERIC_THRESHOLD
+            null_pct   = missing.get(col["name"], {}).get("null_pct", 0)
 
-            is_numeric  = short_type in ("int", "float")
-            likely_cat  = is_numeric and n_unique <= _LOW_CARD_NUMERIC_THRESHOLD
-
-            out.append({
-                "col":        col["name"],
-                "dtype":      raw_dtype,           # raw - exact pandas dtype
-                "type":       short_type,           # short alias
-                "unique":     n_unique,
-                "null_pct":   missing.get(col["name"], {}).get("null_pct", 0),
-                "likely_cat": likely_cat,
-                **({"note": "numeric dtype but low cardinality - treat as categorical label, not a continuous measurement"} if likely_cat else {}),
-            })
+            entry: dict = {"col": col["name"], "t": short_type, "u": n_unique}
+            if null_pct:
+                entry["np"] = null_pct
+            if likely_cat:
+                entry["lc"] = True          # flag only when true
+            out.append(entry)
         return out
 
+
     def _numeric(self, r: dict, likely_cat_cols: list[str]) -> dict:
-        """
-        Keep stats that affect LLM reasoning.
-        Exclude likely_cat columns - they are not continuous measurements
-        and their 'outliers' / 'skewness' stats are meaningless as such.
-        """
         out = {}
         for col, s in r.get("univariate", {}).get("numeric", {}).items():
             if col in likely_cat_cols:
-                out[col] = {
-                    "_skip_reason": "likely_cat - see col_roles.likely_categorical_numeric",
-                    "unique":       s.get("n_unique") or len(set()),
-                    "min":          s.get("min"),
-                    "max":          s.get("max"),
-                }
+                # Only what matters for label cols (class-imbalance check)
+                out[col] = {"lc": 1, "min": s.get("min"), "max": s.get("max"),
+                            "z%": s.get("zeros_pct")}
                 continue
 
-            v_min  = s.get("min", 0)
-            v_max  = s.get("max", 0)
-            out[col] = {
-                "mean":         round(s["mean"], 4),
-                "median":       s["median"],
-                "std":          round(s["std"], 4),
-                "min":          v_min,
-                "max":          v_max,
-                "value_range":  round(v_max - v_min, 4),
-                "skewness":     round(s["skewness"], 3),
-                "zeros_pct":    s["zeros_pct"],
-                "outlier_pct":  s["outlier_pct"],
-
-                "has_negatives": v_min < 0,
+            v_min, v_max = s.get("min", 0), s.get("max", 0)
+            skew = round(s["skewness"], 2)
+            entry: dict = {
+                "mean":  round(s["mean"], 3),
+                "std":   round(s["std"], 3),
+                "min":   v_min,
+                "max":   v_max,
+                "skew":  skew,
+                "z%":    s["zeros_pct"],
+                "out%":  s["outlier_pct"],
             }
+            # only include fields that are non-default / actionable
+            null_pct = s.get("null_pct", 0)
+            if null_pct:
+                entry["np"] = null_pct
+            if v_min < 0:
+                entry["neg"] = True
+            # median only when skewed
+            if abs(skew) > 0.5:
+                entry["med"] = s["median"]
+            out[col] = entry
         return out
 
-    def _categorical(self, r: dict, likely_cat_cols: list[str], full_r: dict) -> dict:
-        """
-        Categorical columns from EDA + numeric-as-category columns merged in.
 
-        For likely_cat columns we pull min/max/unique from the numeric stats
-        so the LLM gets the full picture in one place.
-        """
+    def _categorical(self, r: dict, likely_cat_cols: list[str], full_r: dict) -> dict:
         out: dict = {}
 
         for col, s in r.get("univariate", {}).get("categorical", {}).items():
-            is_id_like = (
-                s["cardinality"] > _ID_CARDINALITY_THRESHOLD
-                and s.get("rare_pct", 0) == 100
-            )
-            if is_id_like:
-                out[col] = {
-                    "cardinality": s["cardinality"],
-                    "note":        "high-cardinality identifier - skip encoding",
-                }
-            else:
-                out[col] = {
-                    "cardinality": s["cardinality"],
-                    "mode":        s["mode"],
-                    "top_3": [
-                        f"{v['value']} ({v['pct']}%)"
-                        for v in s.get("top_values", [])[:3]
-                    ],
-                    "rare_pct": s.get("rare_pct", 0),
-                }
+            if s["cardinality"] > _ID_CARDINALITY_THRESHOLD and s.get("rare_pct", 0) == 100:
+                out[col] = {"card": s["cardinality"], "note": "id"}
+                continue
 
+            entry: dict = {"card": s["cardinality"], "mode": s["mode"]}
+            top = [f"{v['value']}({v['pct']}%)" for v in s.get("top_values", [])[:_CAT_TOP_N]]
+            if top:
+                entry["top"] = top
+            rare = s.get("rare_pct", 0)
+            if rare:
+                entry["rare%"] = rare
+            out[col] = entry
+
+        # Merge likely_cat numeric columns (brief - rules already in col_roles)
         numeric_stats = full_r.get("univariate", {}).get("numeric", {})
         for col in likely_cat_cols:
             if col in out:
                 continue
             s = numeric_stats.get(col, {})
             out[col] = {
-                "dtype":         "numeric (int/float) - but is a categorical label",
-                "cardinality":   s.get("n_unique", "?"),
-                "min":           s.get("min"),
-                "max":           s.get("max"),
-                "zeros_pct":     s.get("zeros_pct"),
-                "note": (
-                    "This column has numeric dtype but very low cardinality. "
-                    "It must be treated as a categorical/label column. "
-                    "Use LabelStrategy or OrdinalStrategy, NOT scaling or outlier handling."
-                ),
-            }
-
-        return out
-
-    def _distributions(self, r: dict) -> dict:
-        """Drop histogram_bins + preview_idx. Keep shape + normality + outlier_pct."""
-        out = {}
-        for col, s in r.get("distributions", {}).items():
-            out[col] = {
-                "shape":       s.get("dist_type_hint"),
-                "is_normal":   s.get("normality_test", {}).get("is_normal"),
-                "outlier_pct": s.get("outlier_summary", {}).get("pct"),
+                "lc":   True,
+                "card": s.get("n_unique"),
+                "min":  s.get("min"),
+                "max":  s.get("max"),
+                "z%":   s.get("zeros_pct"),
             }
         return out
+
 
     def _correlations(self, r: dict) -> list[dict]:
-        """Only pairs with |value| > 0.1 - filters near-zero noise."""
-        return [
-            {
-                "col_a":  p["col_a"],
-                "col_b":  p["col_b"],
-                "method": p["method"],
-                "value":  p["value"],
-            }
-            for p in r.get("correlations", {}).get("top_corr_pairs", [])
-            if abs(p["value"]) > 0.1
+        pairs = r.get("correlations", {}).get("top_corr_pairs", [])
+        filtered = [
+            {"a": p["col_a"], "b": p["col_b"], "r": round(p["value"], 2)}
+            for p in pairs
+            if abs(p["value"]) >= _CORR_MIN_ABS
         ]
+        filtered.sort(key=lambda x: abs(x["r"]), reverse=True)
+        return filtered[:_CORR_MAX_PAIRS]
 
     def _datetime(self, r: dict) -> dict:
-        """Drop null fields and timezone (naive assumed)."""
         out = {}
         for col, s in r.get("datetime", {}).items():
-            out[col] = {
-                k: v for k, v in s.items()
-                if v is not None and k != "timezone"
-            }
+            out[col] = {k: v for k, v in s.items() if v is not None and k != "timezone"}
         return out
 
     def _quality(self, r: dict) -> dict:
-        """Only overall score + flags - drop sub-scores."""
         dq = r.get("data_quality_score", {})
-        return {
-            "score": dq.get("overall_score"),
-            "flags": dq.get("flags", []),
-        }
+        return {"score": dq.get("overall_score"), "flags": dq.get("flags", [])}
