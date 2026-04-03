@@ -34,6 +34,8 @@ services:
     environment:
       POSTGRES_HOST: db
       REDIS_HOST: redis
+    volumes:
+      - ./local_storage:/app/local_storage
 
   frontend:
     build:

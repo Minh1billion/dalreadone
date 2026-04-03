@@ -19,6 +19,9 @@ class Config:
     S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
     S3_ACCESS_KEY = os.environ.get("S3_ACCESS_KEY")
     S3_SECRET_KEY = os.environ.get("S3_SECRET_KEY")
+    
+    # Local Storage (storage for dev)
+    LOCAL_STORAGE_PATH = os.environ.get("LOCAL_STORAGE_PATH", "./local_storage")
 
     # Database
     POSTGRES_USER = os.environ.get("POSTGRES_USER")
