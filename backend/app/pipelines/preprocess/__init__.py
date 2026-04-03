@@ -1,6 +1,6 @@
 from .pipeline import Pipeline
 
-from .preprocess_missing_operation import (
+from .op_missing import (
     MissingOperation,
     MeanStrategy,
     MedianStrategy,
@@ -9,25 +9,25 @@ from .preprocess_missing_operation import (
     DropRowStrategy,
     DropColStrategy,
 )
-from .preprocess_encoding_operation import (
+from .op_encoding import (
     EncodingOperation,
     OneHotStrategy,
     OrdinalStrategy,
     LabelStrategy,
 )
-from .preprocess_outlier_operation import (
+from .op_outlier import (
     OutlierOperation,
     IQRStrategy,
     ZScoreStrategy,
     PercentileClipStrategy,
 )
-from .preprocess_scaling_operation import (
+from .op_scaling import (
     ScalingOperation,
     MinMaxStrategy,
     StandardStrategy,
     RobustStrategy,
 )
-from .preprocess_custom_operation import (
+from .op_custom import (
     CustomCodeOperation,
     CustomCodeStrategy,
 )

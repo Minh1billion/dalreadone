@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.models import File
 from app.services.file_service import get_file_bytes, _load_dataframe
 from app.pipelines.eda.pipeline import run_eda
-from app.llm.pipeline import EDAReviewPipeline
+from app.llm.eda_pipeline import EDAReviewPipeline
 from app.storage import redis
 from app.core.config import Config
 

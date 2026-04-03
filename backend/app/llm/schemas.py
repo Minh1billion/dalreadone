@@ -1,6 +1,6 @@
 from __future__ import annotations
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
@@ -34,5 +34,36 @@ class EDAReviewResult(BaseModel):
     overview:      dict
     issues:        list[IssueItem]
     prep_steps:    list[PrepStep]
-    opportunities: list[str]        = Field(default_factory=list)
-    usage:         dict[str, Any]   = Field(default_factory=dict)
+    opportunities: list[str]       = Field(default_factory=list)
+    usage:         dict[str, Any]  = Field(default_factory=dict)
+
+
+OperationType = Literal["missing", "outlier", "scaling", "encoding"]
+StrategyName  = Literal[
+    "MeanStrategy", "MedianStrategy", "ModeStrategy",
+    "ConstantStrategy", "DropRowStrategy", "DropColStrategy",
+    "IQRStrategy", "ZScoreStrategy", "PercentileClipStrategy",
+    "MinMaxStrategy", "StandardStrategy", "RobustStrategy",
+    "OneHotStrategy", "OrdinalStrategy", "LabelStrategy",
+]
+
+
+class SuggestedLayer(BaseModel):
+    operation: OperationType
+    strategy:  StrategyName
+    cols:      list[str] | None
+    params:    dict[str, Any]  = Field(default_factory=dict)
+    rationale: str
+
+
+class CustomLayer(BaseModel):
+    operation: Literal["custom"] = "custom"
+    cols:      list[str] | None
+    code:      str
+    rationale: str
+
+
+class PreprocessSuggestion(BaseModel):
+    layers:        list[SuggestedLayer]
+    custom_layers: list[CustomLayer]   = Field(default_factory=list)
+    usage:         dict[str, Any]      = Field(default_factory=dict)

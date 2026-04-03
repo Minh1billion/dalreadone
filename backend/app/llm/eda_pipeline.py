@@ -61,29 +61,3 @@ class EDAReviewPipeline:
             self._assembler.to_markdown(result), encoding="utf-8"
         )
         return result
-
-
-# ── python -m app.llm.pipeline ──────────────────────────────────────────────
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
-
-    _EDA = Path("test/results/eda_report_sample.json")
-    _OUT = Path("test/results")
-
-    async def _main() -> None:
-        raw      = json.loads(_EDA.read_text(encoding="utf-8"))
-        pipeline = EDAReviewPipeline()
-        result   = await pipeline.run_and_save(raw, _OUT)
-
-        # ── Print usage summary ──────────────────────────────────────────────
-        u = result.usage["summary"]
-        print(f"\n{'='*55}")
-        print(f"  Issues     : {len(result.issues)}")
-        print(f"  Prep steps : {len(result.prep_steps)}")
-        print(f"  Tokens     : {u['total_tokens']:,}  "
-              f"(↑{u['total_prompt_tokens']:,} / ↓{u['total_completion_tokens']:,})")
-        print(f"  Cost       : ${u['total_cost_usd']:.8f}")
-        print(f"  Output     : {_OUT}/review.{{json,md}}")
-        print(f"{'='*55}")
-
-    asyncio.run(_main())
