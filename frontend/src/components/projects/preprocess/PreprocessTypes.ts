@@ -65,30 +65,58 @@ export function draftToConfig(step: DraftStep): OperationConfig | null {
 
     case 'encoding':
       switch (step.strategy) {
-        case 'onehot':  return { operation: 'encoding', strategy: { type: 'onehot' },                           cols }
-        case 'label':   return { operation: 'encoding', strategy: { type: 'label' },                            cols }
-        case 'ordinal': return { operation: 'encoding', strategy: { type: 'ordinal', order: null },             cols }
+        case 'onehot':  return { operation: 'encoding', strategy: { type: 'onehot' },                cols }
+        case 'label':   return { operation: 'encoding', strategy: { type: 'label' },                 cols }
+        case 'ordinal': return { operation: 'encoding', strategy: { type: 'ordinal', order: null },  cols }
       }
       break
 
     case 'outlier':
       switch (step.strategy) {
         case 'iqr':             return { operation: 'outlier', strategy: { type: 'iqr',             action:    step.params.action    as 'clip' | 'drop' ?? 'clip' },            cols }
-        case 'zscore':          return { operation: 'outlier', strategy: { type: 'zscore',          threshold: step.params.threshold as number                  ?? 3.0,  action: step.params.action as 'clip' | 'drop' ?? 'clip' }, cols }
-        case 'percentile_clip': return { operation: 'outlier', strategy: { type: 'percentile_clip', lower:     step.params.lower    as number                  ?? 0.05, upper:  step.params.upper  as number              ?? 0.95 }, cols }
+        case 'zscore':          return { operation: 'outlier', strategy: { type: 'zscore',          threshold: step.params.threshold as number ?? 3.0, action: step.params.action as 'clip' | 'drop' ?? 'clip' }, cols }
+        case 'percentile_clip': return { operation: 'outlier', strategy: { type: 'percentile_clip', lower:     step.params.lower    as number ?? 0.05, upper:  step.params.upper as number ?? 0.95 }, cols }
       }
       break
 
     case 'scaling':
       switch (step.strategy) {
-        case 'minmax':   return { operation: 'scaling', strategy: { type: 'minmax',   feature_range: step.params.feature_range as [number, number] ?? [0, 1] }, cols }
-        case 'standard': return { operation: 'scaling', strategy: { type: 'standard' },                                                                          cols }
-        case 'robust':   return { operation: 'scaling', strategy: { type: 'robust' },                                                                            cols }
+        case 'minmax':   return { operation: 'scaling', strategy: { type: 'minmax', feature_range: step.params.feature_range as [number, number] ?? [0, 1] }, cols }
+        case 'standard': return { operation: 'scaling', strategy: { type: 'standard' }, cols }
+        case 'robust':   return { operation: 'scaling', strategy: { type: 'robust' },   cols }
       }
       break
   }
 
   return null
+}
+
+let _suggestCounter = 0
+
+export function suggestToSteps(configs: OperationConfig[]): DraftStep[] {
+  return configs.map(cfg => {
+    const id = `suggest-${++_suggestCounter}`
+
+    if (cfg.operation === 'custom_code') {
+      return {
+        id,
+        operation: 'custom_code' as Operation,
+        strategy:  'custom_code',
+        params:    { code: cfg.strategy.code },
+        cols:      null,
+      }
+    }
+
+    const s = cfg.strategy as any
+
+    return {
+      id,
+      operation: cfg.operation as Operation,
+      strategy:  s.type,
+      cols:      cfg.cols,
+      params:    (({ type, ...rest }) => rest)(s),
+    }
+  })
 }
 
 export const OPERATION_OPTIONS: { value: Operation; label: string }[] = [

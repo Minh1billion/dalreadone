@@ -2,7 +2,9 @@ import { useState, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { useFilePanel } from '../hooks/useFilePanel'
 import { useEDA } from '../hooks/useEDA'
+import { useReview } from '../hooks/useReview'
 import { usePreprocess } from '../hooks/usePreprocess'
+import { useSuggest } from '../hooks/useSuggest'
 import { FilePanelSidebar } from '../components/projects/FilePanelSidebar'
 import { EDASection } from '../components/projects/eda/EDASection'
 import { PreprocessSection } from '../components/projects/preprocess/PreprocessSection'
@@ -17,7 +19,7 @@ export default function ProjectPage() {
 
   const [activeFileId, setActiveFileId] = useState<number | null>(null)
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT)
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  const [collapsed,    setCollapsed]    = useState<Record<string, boolean>>({})
   const dragging = useRef(false)
   const startX   = useRef(0)
   const startW   = useRef(0)
@@ -32,7 +34,9 @@ export default function ProjectPage() {
   })
 
   const eda        = useEDA(activeFileId)
+  const review     = useReview(eda.isDone ? eda.taskId : null)
   const preprocess = usePreprocess(activeFileId)
+  const suggest    = useSuggest()
   const activeFile = panel.files.find((f: any) => f.id === activeFileId)
 
   const onDragStart = useCallback((e: React.MouseEvent) => {
@@ -145,6 +149,7 @@ export default function ProjectPage() {
 
             <EDASection
               eda={eda}
+              review={review}
               activeFile={activeFile}
               collapsed={collapsed.eda ?? false}
               onToggle={() => toggleSection('eda')}
@@ -153,6 +158,9 @@ export default function ProjectPage() {
             <PreprocessSection
               key={activeFileId}
               preprocess={preprocess}
+              suggest={suggest}
+              edaTaskId={eda.taskId}
+              reviewTaskId={review.reviewTaskId}
               preview={panel.preview}
               onConfirmSuccess={panel.triggerRefresh}
               collapsed={collapsed.preprocess ?? false}

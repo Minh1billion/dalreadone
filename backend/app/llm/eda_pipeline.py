@@ -16,26 +16,32 @@ logger = logging.getLogger(__name__)
 
 class EDAReviewPipeline:
     def __init__(self, provider: str | None = None) -> None:
-        engine        = make_engine(provider)
-        self._tracker = CostTracker()
+        engine          = make_engine(provider)
+        self._tracker   = CostTracker()
         self._builder   = EDAContextBuilder()
         self._chain     = EDAReviewChain(engine, self._tracker)
         self._assembler = ReportAssembler()
 
     @property
     def tracker(self) -> CostTracker:
-        """Expose tracker cho caller nếu cần inspect sau khi chạy."""
+        """Expose tracker for callers that need to inspect cost after run."""
         return self._tracker
 
     async def arun(self, eda_json: dict) -> EDAReviewResult:
         slim     = self._builder.build(eda_json)
         overview = slim["overview"]
-        
-        logger.info("[1/2] Context: %d chars", len(json.dumps(slim)))
-        issues, prep_steps, opps = await self._chain.arun(slim)
+
         logger.info(
-            "[2/2] Issues: %d | Prep: %d | Cost: $%.8f",
-            len(issues), len(prep_steps), self._tracker.total_cost_usd,
+            "[1/2] Context built: %d chars | likely_cat cols: %s",
+            len(json.dumps(slim)),
+            slim.get("col_roles", {}).get("likely_categorical_numeric", []),
+        )
+
+        issues, prep_steps, opps = await self._chain.arun(slim)
+
+        logger.info(
+            "[2/2] Issues: %d | Prep: %d | Opportunities: %d | Cost: $%.8f",
+            len(issues), len(prep_steps), len(opps), self._tracker.total_cost_usd,
         )
 
         return EDAReviewResult(

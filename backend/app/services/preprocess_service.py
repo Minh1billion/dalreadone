@@ -16,9 +16,9 @@ from starlette.datastructures import Headers
 from app.core.config import Config
 from app.models import File
 from app.services.file_service import get_file_bytes, _load_dataframe, upload_project_file
-from app.storage import redis
 from app.llm.schemas import EDAReviewResult
 from app.llm.preprocess_pipeline import PreprocessSuggestPipeline
+from app.storage import redis
 from app.pipelines.preprocess import (
     Pipeline,
     MissingOperation, MeanStrategy, MedianStrategy, ModeStrategy,
@@ -38,6 +38,7 @@ RESULT_TTL = 60 * 30
 
 REVIEW_NS = "review_task"
 
+EDA_NS      = "eda_task"
 SUGGEST_NS  = "suggest_task"
 SUGGEST_TTL = Config.PREPROCESS_TASK_TTL
 
@@ -234,8 +235,6 @@ def confirm_preprocess_task(task_id: str, user_id: int, db: Session) -> File:
     return file_record
 
 
-# ── Suggest ───────────────────────────────────────────────────────────────────
-
 _STRATEGY_TO_OP: dict[str, str] = {
     "MeanStrategy": "missing", "MedianStrategy": "missing", "ModeStrategy": "missing",
     "ConstantStrategy": "missing", "DropRowStrategy": "missing", "DropColStrategy": "missing",
@@ -269,10 +268,11 @@ def _custom_to_step(layer) -> dict:
     }
 
 
-def _suggest_task_dict(task_id: str, review_task_id: str, user_id: int) -> dict[str, Any]:
+def _suggest_task_dict(task_id: str, user_id: int, review_task_id: str | None = None, eda_task_id: str | None = None) -> dict[str, Any]:
     return {
         "task_id":        task_id,
         "review_task_id": review_task_id,
+        "eda_task_id":    eda_task_id,
         "user_id":        user_id,
         "status":         "pending",
         "progress":       0,
@@ -296,7 +296,24 @@ def create_suggest_task(review_task_id: str, user_id: int) -> dict:
         raise HTTPException(status_code=409, detail="Review result is empty")
 
     task_id = str(uuid.uuid4())
-    task    = _suggest_task_dict(task_id, review_task_id, user_id)
+    task    = _suggest_task_dict(task_id, user_id, review_task_id=review_task_id)
+    redis.set(SUGGEST_NS, task_id, task, ttl=SUGGEST_TTL)
+    return task
+
+
+def create_suggest_task_from_eda(eda_task_id: str, user_id: int) -> dict:
+    eda_task = redis.get(EDA_NS, eda_task_id)
+    if not eda_task:
+        raise HTTPException(status_code=404, detail="EDA task not found")
+    if eda_task["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    if eda_task["status"] != "done":
+        raise HTTPException(status_code=409, detail=f"EDA task is '{eda_task['status']}', must be 'done'")
+    if eda_task["result"] is None:
+        raise HTTPException(status_code=409, detail="EDA result is empty")
+
+    task_id = str(uuid.uuid4())
+    task    = _suggest_task_dict(task_id, user_id, eda_task_id=eda_task_id)
     redis.set(SUGGEST_NS, task_id, task, ttl=SUGGEST_TTL)
     return task
 
@@ -324,21 +341,27 @@ def run_suggest_task(task_id: str) -> None:
     try:
         _update(10)
 
-        review_task = redis.get(REVIEW_NS, task["review_task_id"])
-        if not review_task or review_task["result"] is None:
-            raise ValueError("Review result not found in cache")
-
-        _update(20)
-
-        review_result = EDAReviewResult.model_validate(
-            {**review_task["result"], "usage": review_task.get("usage", {})}
-        )
-
-        if sys.platform == "win32":
-            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-        runner = PreprocessSuggestPipeline()
-        suggestion, _, ast_errors = asyncio.run(runner.arun_from_review(review_result))
+        if task.get("review_task_id"):
+            review_task = redis.get(REVIEW_NS, task["review_task_id"])
+            if not review_task or review_task["result"] is None:
+                raise ValueError("Review result not found in cache")
+            _update(20)
+            review_result = EDAReviewResult.model_validate(
+                {**review_task["result"], "usage": review_task.get("usage", {})}
+            )
+            if sys.platform == "win32":
+                asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+            runner = PreprocessSuggestPipeline()
+            suggestion, _, ast_errors = asyncio.run(runner.arun_from_review(review_result))
+        else:
+            eda_task = redis.get(EDA_NS, task["eda_task_id"])
+            if not eda_task or eda_task["result"] is None:
+                raise ValueError("EDA result not found in cache")
+            _update(20)
+            if sys.platform == "win32":
+                asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+            runner = PreprocessSuggestPipeline()
+            suggestion, _, ast_errors = asyncio.run(runner.arun_from_eda(eda_task["result"]))
 
         _update(90)
 

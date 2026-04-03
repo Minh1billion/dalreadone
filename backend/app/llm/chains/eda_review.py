@@ -6,13 +6,14 @@ from app.llm.schemas import IssueItem, PrepStep
 from app.llm.cost_tracker import CostTracker
 
 _SYSTEM = """\
-You are a senior data analyst. Respond ONLY with valid JSON — no markdown, \
+You are a senior data analyst with deep expertise in data quality assessment \
+and machine learning preprocessing. Respond ONLY with valid JSON - no markdown, \
 no explanation outside the JSON object.\
 """
 
 _HUMAN = """\
-Review this EDA summary. Identify data quality issues and recommend \
-preprocessing steps (description only, no code).
+Review the EDA summary below. Your job is to identify ALL meaningful data quality \
+issues and recommend the correct preprocessing steps to address them.
 
 ## EDA Summary
 {eda_json}
@@ -32,31 +33,99 @@ preprocessing steps (description only, no code).
       "priority": "must | should | optional",
       "col": "column name or null for dataset-level",
       "action": "short_snake_case label",
-      "rationale": "one sentence — why this step, what it fixes"
+      "rationale": "one sentence - why this step, what it fixes"
     }}
   ],
   "opportunities": [
-    "brief analytical opportunity (3-5 items)"
+    "brief analytical opportunity"
   ]
 }}
 
-## Rules
-- Read `overview.column_names` first to understand the dataset domain \
-(e.g. time-series, retail transactions, sensor data) — tailor all \
-observations and opportunities to that domain
-- issues: only flag problems actually evidenced by the numbers \
-(null_pct > 0, outlier_pct > 5, duplicate_pct > 1, negative values \
-in quantity/price columns, etc.)
-- Do NOT flag issues for columns/stats that are absent simply because \
-the dataset has few columns — absence of correlations or distributions \
-in a 2-column dataset is expected, not an issue
-- Do NOT flag high cardinality on ID/invoice/date columns as an issue
-- prep_steps: ordered must → should → optional; dataset-level steps first; \
-only recommend steps that address a real detected issue above
-- opportunities: 3-5 concrete analysis ideas specific to the column names \
-and inferred domain (e.g. Date + Price → time-series forecasting, \
-seasonality decomposition)
+## Step 1 - Understand the dataset domain
+Before flagging anything, read `overview.column_names` and infer the domain \
+(e.g. job market data, e-commerce transactions, IoT sensor readings). \
+Tailor every observation and opportunity to that domain.
+
+## Step 2 - Column type classification (do this before anything else)
+Read `col_roles` carefully:
+
+- `col_roles.likely_categorical_numeric`: These columns have numeric dtype (int/float) \
+but very low cardinality. They are LABEL columns, not measurements. Rules:
+  * DO NOT flag them for outliers or skewness - those stats are meaningless for labels
+  * DO NOT recommend scaling on them
+  * DO recommend encoding (LabelStrategy or OrdinalStrategy) if they are target/ordinal labels
+  * DO flag class imbalance if zeros_pct is high (> 5%) or one value dominates > 80%
+  * Example: job_survival_class with values 0/1/2 is a multiclass label, not salary data
+
+- `col_roles.datetime`: Flag if there are gaps, irregular intervals, or future dates \
+beyond the expected range. Opportunity: time-series decomposition, trend analysis.
+
+- `col_roles.boolean`: Flag if severe imbalance (one value > 95%).
+
+- `col_roles.id_like`: Never flag high cardinality on these. Never recommend encoding them.
+
+## Step 3 - Issue detection rules
+Flag an issue ONLY when evidenced by the actual numbers:
+
+**Missing values**
+- null_pct > 0 → flag (severity: high if > 20%, medium if 5-20%, low if < 5%)
+
+**Outliers** (numeric non-label columns only)
+- outlier_pct > 5% → high, 1-5% → medium, < 1% → low
+- Also check: has_negatives=true in a column where negatives are invalid \
+  (salary, price, count, age → must be positive)
+
+**Skewness / distribution**
+- |skewness| > 1 → high skew, flag it
+- |skewness| between 0.5 and 1 → moderate skew, mention if relevant
+
+**Duplicates**
+- duplicate_pct > 1% → flag at dataset level
+
+**Class imbalance** (for likely_cat columns and boolean columns)
+- zeros_pct > 10% → flag - may indicate missing class representation
+- One category dominates top_3 with pct > 80% → flag imbalance
+
+**Cardinality**
+- High cardinality on true categorical columns (not id_like) → flag if > 50 unique \
+  because OneHot will explode dimensionality; suggest target or frequency encoding
+
+**Correlation**
+- |correlation| > 0.9 → flag as near-multicollinearity
+- |correlation| > 0.7 → mention as strong correlation (opportunity for feature reduction)
+
+**Domain violations**
+- has_negatives=true in a numeric column where domain requires positive values → flag as high
+
+## Step 4 - Preprocessing recommendations
+Order: must → should → optional. Dataset-level steps come first.
+
+Map issues 1:1 to prep_steps - every flagged issue must have at least one prep_step. \
+Use these action labels:
+- Missing: `impute_mean` | `impute_median` | `impute_mode` | `impute_constant` | \
+  `drop_rows_missing` | `drop_col_missing`
+- Outliers: `handle_outliers_iqr` | `handle_outliers_zscore` | `clip_percentile`
+- Skew: `transform_log1p` | `transform_sqrt` | `transform_boxcox`
+- Encoding: `encode_label` | `encode_ordinal` | `encode_onehot` | `encode_frequency` | \
+  `encode_target`
+- Scaling: `scale_standard` | `scale_minmax` | `scale_robust`
+- Imbalance: `balance_classes_oversample` | `balance_classes_undersample` | \
+  `balance_classes_weights`
+- Dedup: `drop_duplicates`
+- Domain fix: `clip_negative_to_zero` | `drop_invalid_rows`
+
+## Step 5 - Opportunities
+Provide 3-5 specific analytical opportunities tied to the actual columns and domain. \
+Think: what questions could this dataset answer? what models would benefit from \
+the preprocessing steps above?
+
+## Hard rules
 - Return ONLY the JSON object, nothing else
+- Do NOT invent issues that are not supported by numbers in the EDA
+- Do NOT flag ID/invoice/date columns for high cardinality
+- Do NOT apply outlier or scaling rules to likely_categorical_numeric columns
+- Do NOT omit encoding recommendations for likely_categorical_numeric columns \
+  that are clearly label/target columns
 """
 
 CHAIN_NAME = "eda_review"

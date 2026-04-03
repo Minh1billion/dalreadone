@@ -15,17 +15,16 @@ const EDA_STEPS = [
 
 interface EDASectonProps {
   eda:        ReturnType<typeof useEDA>
+  review:     ReturnType<typeof useReview>
   activeFile: any
   collapsed:  boolean
   onToggle:   () => void
 }
 
-export function EDASection({ eda, activeFile, collapsed, onToggle }: EDASectonProps) {
+export function EDASection({ eda, review, activeFile, collapsed, onToggle }: EDASectonProps) {
   const currentStepIdx = eda.step
     ? EDA_STEPS.findIndex(s => s.key === eda.step)
     : -1
-
-  const review = useReview(eda.isDone ? eda.taskId : null)
 
   return (
     <section className='bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden'>

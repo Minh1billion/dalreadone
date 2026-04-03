@@ -1,22 +1,34 @@
 import { api } from './axios'
 
 export type PreprocessStatus = 'pending' | 'running' | 'done' | 'error'
+export type SuggestStatus    = 'pending' | 'running' | 'done' | 'error'
 
 export type PreprocessTask = {
-  task_id: string
-  file_id: number
-  status: PreprocessStatus
-  step: string | null
-  progress: number
-  preview: Record<string, unknown>[] | null
-  error: string | null
+  task_id:    string
+  file_id:    number
+  status:     PreprocessStatus
+  step:       string | null
+  progress:   number
+  preview:    Record<string, unknown>[] | null
+  error:      string | null
   created_at: string
 }
 
 export type PreprocessConfirmed = {
-  file_id: number
-  filename: string
+  file_id:    number
+  filename:   string
   project_id: number
+}
+
+export type SuggestTask = {
+  task_id:        string
+  review_task_id: string
+  status:         SuggestStatus
+  progress:       number
+  steps:          OperationConfig[] | null
+  usage:          Record<string, unknown> | null
+  ast_errors:     string[] | null
+  error:          string | null
 }
 
 export type OperationConfig =
@@ -66,4 +78,18 @@ export const preprocessApi = {
 
   cancel: (taskId: string) =>
     api.delete(`/preprocess/cancel/${taskId}`),
+}
+
+export const suggestApi = {
+  start: (reviewTaskId: string) =>
+    api.post<{ task_id: string }>(`/preprocess/suggest/${reviewTaskId}`),
+
+  startFromEda: (edaTaskId: string) =>
+    api.post<{ task_id: string }>(`/preprocess/suggest/from-eda/${edaTaskId}`),
+
+  status: (taskId: string) =>
+    api.get<SuggestTask>(`/preprocess/suggest/status/${taskId}`),
+
+  cancel: (taskId: string) =>
+    api.delete(`/preprocess/suggest/${taskId}`),
 }

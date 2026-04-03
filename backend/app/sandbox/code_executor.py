@@ -1,5 +1,7 @@
 from __future__ import annotations
 import ast
+import math
+import statistics
 import traceback
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 
@@ -12,6 +14,11 @@ _ALLOWED_BUILTINS = {
     "float", "int", "isinstance", "len", "list", "map", "max",
     "min", "print", "range", "round", "set", "sorted", "str",
     "sum", "tuple", "type", "zip", "None", "True", "False",
+}
+
+_ALLOWED_IMPORTS: dict[str, object] = {
+    "math":       math,
+    "statistics": statistics,
 }
 
 _executor = ThreadPoolExecutor(max_workers=4)
@@ -32,10 +39,22 @@ class CodeExecutor:
             raise CodeExecutionError(f"Syntax error: {e}") from e
 
         for node in ast.walk(tree):
-            if isinstance(node, (ast.Import, ast.ImportFrom)):
-                raise CodeExecutionError(
-                    "Import statements are not allowed in custom transform code"
-                )
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    # alias.name is e.g. "math" or "math.something"
+                    top = alias.name.split(".")[0]
+                    if top not in _ALLOWED_IMPORTS:
+                        raise CodeExecutionError(
+                            f"Import '{alias.name}' is not allowed in custom transform code. "
+                            f"Allowed imports: {sorted(_ALLOWED_IMPORTS)}"
+                        )
+            elif isinstance(node, ast.ImportFrom):
+                top = (node.module or "").split(".")[0]
+                if top not in _ALLOWED_IMPORTS:
+                    raise CodeExecutionError(
+                        f"'from {node.module} import ...' is not allowed in custom transform code. "
+                        f"Allowed imports: {sorted(_ALLOWED_IMPORTS)}"
+                    )
 
         fn_names = [
             node.name for node in ast.walk(tree)
@@ -48,10 +67,14 @@ class CodeExecutor:
 
     def _build_namespace(self) -> dict:
         builtins_src = __builtins__ if isinstance(__builtins__, dict) else vars(__builtins__)
-        return {
-            "__builtins__": {k: builtins_src[k] for k in _ALLOWED_BUILTINS if k in builtins_src},
+        ns = {
+            "__builtins__": {
+                k: builtins_src[k] for k in _ALLOWED_BUILTINS if k in builtins_src
+            },
             "pd": pd,
         }
+        ns.update(_ALLOWED_IMPORTS)
+        return ns
 
     def _compile_and_extract(self, code: str) -> object:
         namespace = self._build_namespace()
@@ -77,7 +100,9 @@ class CodeExecutor:
                 if user_frames
                 else f"line {tb[-1].lineno}" if tb else "unknown location"
             )
-            raise CodeExecutionError(f"{type(e).__name__} at {location}\n{e}") from e
+            raise CodeExecutionError(
+                f"{type(e).__name__} at {location}\n{e}"
+            ) from e
 
         return result
 

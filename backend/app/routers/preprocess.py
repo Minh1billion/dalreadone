@@ -15,6 +15,7 @@ from app.services.preprocess_service import (
     run_preprocess_task,
     confirm_preprocess_task,
     create_suggest_task,
+    create_suggest_task_from_eda,
     get_suggest_task,
     run_suggest_task,
     PREPROCESS_NS,
@@ -109,6 +110,17 @@ def get_suggest_status(
         "ast_errors":     task["ast_errors"] if done  else None,
         "error":          task["error"]      if error else None,
     }
+
+
+@router.post("/suggest/from-eda/{eda_task_id}", status_code=202)
+def start_suggest_from_eda(
+    eda_task_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+):
+    task = create_suggest_task_from_eda(eda_task_id, current_user.id)
+    background_tasks.add_task(run_suggest_task, task["task_id"])
+    return {"task_id": task["task_id"]}
 
 
 @router.delete("/suggest/{task_id}", status_code=204)
