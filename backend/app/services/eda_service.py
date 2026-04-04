@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.models import File
 from app.services.file_service import get_file_bytes, _load_dataframe
 from app.pipelines.eda.pipeline import run_eda
-from app.llm.eda_pipeline import EDAReviewPipeline
+from app.llm.chains.eda.pipeline import analyze
 from app.storage import redis
 from app.core.config import Config
 
@@ -149,15 +149,12 @@ def run_review_task(task_id: str) -> None:
         if sys.platform == "win32":
             asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-        pipeline      = EDAReviewPipeline()
-        review_result = asyncio.run(
-            pipeline.arun(eda_task["result"])
-        )
+        review_result = analyze(eda_task["result"])
 
         task["status"]   = "done"
         task["progress"] = 100
-        task["result"]   = review_result.model_dump(exclude={"usage"})
-        task["usage"]    = review_result.usage
+        task["result"]   = review_result
+        task["usage"]    = None
         redis.set(REVIEW_NS, task_id, task, ttl=EDA_TTL)
 
     except Exception as e:

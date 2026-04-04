@@ -9,11 +9,11 @@ export function useReview(edaTaskId: string | null) {
   const [startError, setStartError]     = useState<string | null>(null)
 
   const taskQuery = useQuery<ReviewTask>({
-    queryKey: ['review-task', reviewTaskId],
+    queryKey: ['review-task', edaTaskId, reviewTaskId],
     enabled:  !!edaTaskId && !!reviewTaskId,
     refetchInterval: (query) => {
-      const s = query.state.data?.status
-      return s === 'done' || s === 'error' ? false : 1500
+      const status = query.state.data?.status
+      return status === 'done' || status === 'error' ? false : 1500
     },
     queryFn: async () => {
       const { data } = await reviewApi.status(edaTaskId!, reviewTaskId!)
@@ -26,7 +26,7 @@ export function useReview(edaTaskId: string | null) {
     setStarting(true)
     setStartError(null)
     setReviewTaskId(null)
-    qc.removeQueries({ queryKey: ['review-task'] })
+    qc.removeQueries({ queryKey: ['review-task', edaTaskId] })
 
     try {
       const { data } = await reviewApi.start(edaTaskId)
@@ -43,8 +43,8 @@ export function useReview(edaTaskId: string | null) {
   const reset = useCallback(() => {
     setReviewTaskId(null)
     setStartError(null)
-    qc.removeQueries({ queryKey: ['review-task'] })
-  }, [qc])
+    qc.removeQueries({ queryKey: ['review-task', edaTaskId] })
+  }, [edaTaskId, qc])
 
   const task = taskQuery.data ?? null
 
@@ -55,13 +55,11 @@ export function useReview(edaTaskId: string | null) {
     startError,
     reviewTaskId,
     task,
-    status:    task?.status ?? null,
-    progress:  task?.progress ?? 0,
-    result:    task?.result ?? null,
-    usage:     task?.usage ?? null,
-    error:     task?.error ?? null,
-    isRunning: task?.status === 'pending' || task?.status === 'running',
-    isDone:    task?.status === 'done',
-    isError:   task?.status === 'error',
+    progress:    task?.progress ?? 0,
+    result:      task?.result ?? null,
+    reviewError: task?.error ?? null,
+    isRunning:   task?.status === 'pending' || task?.status === 'running',
+    isDone:      task?.status === 'done',
+    isError:     task?.status === 'error',
   }
 }

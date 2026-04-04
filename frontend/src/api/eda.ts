@@ -12,33 +12,35 @@ export type EDATask = {
   error:    string | null
 }
 
-export type ReviewIssue = {
-  col:      string
-  severity: 'high' | 'medium' | 'low'
-  detail:   string
-  impact:   string
-}
-
-export type ReviewPrepStep = {
-  priority:  'must' | 'should' | 'optional'
-  col:       string | null
-  action:    string
-  rationale: string
-}
-
 export type ReviewResult = {
-  issues:        ReviewIssue[]
-  prep_steps:    ReviewPrepStep[]
-  opportunities: string[]
-}
-
-export type ReviewUsage = {
-  summary: {
-    total_tokens:            number
-    total_prompt_tokens:     number
-    total_completion_tokens: number
-    total_cost_usd:          number
+  domain: {
+    prediction:          string
+    confidence:          'high' | 'medium' | 'low'
+    reasoning:           string
+    data_characteristics: string[]
   }
+  issues: {
+    column:   string | null
+    type:     string
+    severity: 'critical' | 'warning' | 'info'
+    detail:   string
+  }[]
+  semantic_types: {
+    column:        string
+    dtype_in_data: string
+    semantic_type: string
+    needs_cast:    boolean
+    cast_to:       string | null
+    reasoning:     string
+  }[]
+  column_relationships: {
+    columns:           string[]
+    relationship_type: 'redundant' | 'derived' | 'leakage' | 'correlated' | 'group_key'
+    strength:          number
+    reasoning:         string
+  }[]
+  keep_columns:    string[]
+  drop_candidates: { column: string; reason: string }[]
 }
 
 export type ReviewTask = {
@@ -47,7 +49,6 @@ export type ReviewTask = {
   status:      ReviewStatus
   progress:    number
   result:      ReviewResult | null
-  usage:       ReviewUsage | null
   error:       string | null
 }
 

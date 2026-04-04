@@ -10,6 +10,8 @@ fastparquet
 # LLM
 groq
 langchain-groq
+langchain_google_genai
+langchain-openai
 langchain-core
 langchain
 tabulate

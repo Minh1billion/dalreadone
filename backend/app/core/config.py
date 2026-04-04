@@ -6,7 +6,7 @@ load_dotenv()
 class Config:
     # LLM
     GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-    MODEL_ID = os.environ.get("MODEL_ID")
+    GROQ_MODEL_ID = os.environ.get("GROQ_MODEL_ID")
     
     DA_TEMPERATURE = float(os.environ.get("DA_TEMPERATURE", 0.2))
     DA_MAX_TOKENS = int(os.environ.get("DA_MAX_TOKENS", 8192))

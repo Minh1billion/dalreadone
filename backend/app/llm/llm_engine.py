@@ -1,70 +1,46 @@
-from __future__ import annotations
-
-import asyncio
-import json
-import logging
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from pathlib import Path
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_groq import ChatGroq
 
 from app.core.config import Config
 
-logger = logging.getLogger(__name__)
+llm = ChatGroq(api_key=Config.GROQ_API_KEY, model=Config.GROQ_MODEL_ID)
 
+def call(prompt: str, system: str | None = None) -> str:
+    messages = []
+    if system:
+        messages.append(SystemMessage(content=system))
+    messages.append(HumanMessage(content=prompt))
+    
+    return llm.invoke(messages).content
 
-@dataclass
-class LLMResponse:
-    content: str
-    prompt_tokens: int
-    completion_tokens: int
-    model: str
+def call_json(prompt: str, system: str | None = None) -> str:
+    messages = []
+    if system:
+        messages.append(SystemMessage(content=system))
+    messages.append(HumanMessage(content=prompt))
+    
+    return llm.bind(response_format={"type": "json_object"}).invoke(messages).content
 
-
-class BaseLLMEngine(ABC):
-    @abstractmethod
-    async def ainvoke(
-        self,
-        system_prompt: str,
-        user_message: str,
-    ) -> LLMResponse: ...
-
-
-class GroqEngine(BaseLLMEngine):
-    def __init__(self) -> None:
-        from langchain_groq import ChatGroq
-        self._llm = ChatGroq(
-            api_key=Config.GROQ_API_KEY,
-            model=Config.MODEL_ID,
-            temperature=Config.DA_TEMPERATURE,
-            max_tokens=Config.DA_MAX_TOKENS,
-        )
-
-    async def ainvoke(self, system_prompt: str, user_message: str) -> LLMResponse:
-        from langchain_core.messages import HumanMessage, SystemMessage
-        messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=user_message),
-        ]
-        resp = await self._llm.ainvoke(messages)
-
-        usage = resp.response_metadata.get("token_usage", {})
-        return LLMResponse(
-            content=resp.content,
-            prompt_tokens=usage.get("prompt_tokens", 0),
-            completion_tokens=usage.get("completion_tokens", 0),
-            model=usage.get("model_name", Config.MODEL_ID) or Config.MODEL_ID,
-        )
-
-
-_REGISTRY: dict[str, type[BaseLLMEngine]] = {
-    "groq": GroqEngine,
-}
-
-
-def make_engine(provider: str | None = None) -> BaseLLMEngine:
-    import os
-    key = (provider or os.environ.get("LLM_PROVIDER", "groq")).lower()
-    cls = _REGISTRY.get(key)
-    if cls is None:
-        raise ValueError(f"Unknown LLM provider '{key}'. Available: {list(_REGISTRY)}")
-    return cls()
+if __name__ == "__main__":
+    import json
+    from pprint import pprint
+    from app.llm.llm_engine import call_json
+    from app.llm.chains.eda.prompt import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
+    from app.llm.chains.eda.context_builder import build_context
+ 
+    path = "../eda_Future of Jobs AI Dataset.csv.json"
+ 
+    def analyze(eda_report: dict) -> dict:
+        context = build_context(eda_report)
+        prompt = USER_PROMPT_TEMPLATE.format(context=json.dumps(context, ensure_ascii=False))
+        raw = call_json(prompt=prompt, system=SYSTEM_PROMPT)
+        return json.loads(raw)
+ 
+    with open(path) as f:
+        eda_report = json.load(f)
+ 
+    result = analyze(eda_report)
+    pprint(result)
+    
+    with open("analysis_result.json", "w") as f:
+        json.dump(result, f, indent=2, ensure_ascii=False)

@@ -14,10 +14,6 @@ from app.services.preprocess_service import (
     get_preprocess_task,
     run_preprocess_task,
     confirm_preprocess_task,
-    create_suggest_task,
-    create_suggest_task_from_eda,
-    get_suggest_task,
-    run_suggest_task,
     PREPROCESS_NS,
     RESULT_NS,
     SUGGEST_NS,
@@ -79,66 +75,3 @@ def cancel_preprocess(
         raise HTTPException(status_code=403, detail="Not authorized")
     redis.delete(PREPROCESS_NS, task_id)
     redis.delete(RESULT_NS, task_id)
-
-
-@router.post("/suggest/{review_task_id}", status_code=202)
-def start_suggest(
-    review_task_id: str,
-    background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user),
-):
-    task = create_suggest_task(review_task_id, current_user.id)
-    background_tasks.add_task(run_suggest_task, task["task_id"])
-    return {"task_id": task["task_id"]}
-
-
-@router.get("/suggest/status/{task_id}")
-def get_suggest_status(
-    task_id: str,
-    current_user: User = Depends(get_current_user),
-):
-    task  = get_suggest_task(task_id, current_user.id)
-    done  = task["status"] == "done"
-    error = task["status"] == "error"
-
-    source = task.get("source")
-    if not source:
-        if task.get("review_task_id"):
-            source = "review"
-        elif task.get("eda_task_id"):
-            source = "eda"
-
-    return {
-        "task_id":        task["task_id"],
-        "source":         source,
-        "review_task_id": task.get("review_task_id"),
-        "eda_task_id":    task.get("eda_task_id"),
-        "status":         task["status"],
-        "progress":       task["progress"],
-        "steps":          task["result"]     if done  else None,
-        "usage":          task["usage"]      if done  else None,
-        "ast_errors":     task["ast_errors"] if done  else None,
-        "error":          task["error"]      if error else None,
-    }
-
-
-@router.post("/suggest/from-eda/{eda_task_id}", status_code=202)
-def start_suggest_from_eda(
-    eda_task_id: str,
-    background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user),
-):
-    task = create_suggest_task_from_eda(eda_task_id, current_user.id)
-    background_tasks.add_task(run_suggest_task, task["task_id"])
-    return {"task_id": task["task_id"]}
-
-
-@router.delete("/suggest/{task_id}", status_code=204)
-def cancel_suggest(
-    task_id: str,
-    current_user: User = Depends(get_current_user),
-):
-    task = redis.get(SUGGEST_NS, task_id)
-    if task and task["user_id"] != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized")
-    redis.delete(SUGGEST_NS, task_id)
