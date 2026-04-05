@@ -36,6 +36,9 @@ export type OperationConfig =
   | { operation: 'encoding';    strategy: EncodingStrategyConfig;   cols: string[] | null }
   | { operation: 'outlier';     strategy: OutlierStrategyConfig;    cols: string[] | null }
   | { operation: 'scaling';     strategy: ScalingStrategyConfig;    cols: string[] | null }
+  | { operation: 'drop';        strategy: DropStrategyConfig;       cols: string[] | null }
+  | { operation: 'cast';        strategy: CastStrategyConfig;       cols: string[] }
+  | { operation: 'feature';     strategy: FeatureStrategyConfig;    cols: string[] | null }
   | { operation: 'custom_code'; strategy: CustomCodeStrategyConfig; cols: null }
 
 export type MissingStrategyConfig =
@@ -60,6 +63,19 @@ export type ScalingStrategyConfig =
   | { type: 'minmax'; feature_range: [number, number] }
   | { type: 'standard' }
   | { type: 'robust' }
+
+export type DropStrategyConfig =
+  | { type: 'drop_columns' }
+  | { type: 'drop_duplicates'; keep: 'first' | 'last' }
+
+export type CastStrategyConfig = {
+  type:      'cast'
+  dtype_map: Record<string, string>
+}
+
+export type FeatureStrategyConfig =
+  | { type: 'lambda';  expressions: { output_col: string; fn: string }[] }
+  | { type: 'binning'; bins_map: Record<string, { output_col: string; bins: number | number[]; labels?: string[]; right?: boolean }> }
 
 export type CustomCodeStrategyConfig = {
   type: 'custom_code'

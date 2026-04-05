@@ -1,6 +1,9 @@
 import { useRef, useEffect } from 'react'
 import type { DraftStep, ColTypeMap } from './PreprocessTypes'
 import { OPERATION_OPTIONS, STRATEGY_OPTIONS } from './PreprocessTypes'
+import { ColTypeLegend } from './ColTypeLegend'
+
+const SUPPORTED_DTYPES = ['int', 'int32', 'int64', 'float', 'float32', 'float64', 'str', 'bool', 'datetime', 'category']
 
 const DEFAULT_CUSTOM_CODE = `def transform(df):
     df = df.copy()
@@ -20,10 +23,10 @@ interface Props {
 function ColSelector({
   cols, colTypeMap, selected, onChange,
 }: {
-  cols: string[]
+  cols:       string[]
   colTypeMap: ColTypeMap
-  selected: string[] | null
-  onChange: (cols: string[]) => void
+  selected:   string[] | null
+  onChange:   (cols: string[]) => void
 }) {
   const sel = selected ?? []
   return (
@@ -59,7 +62,7 @@ function ColSelector({
 function CodeEditor({
   code, onChange,
 }: {
-  code: string
+  code:     string
   onChange: (code: string) => void
 }) {
   const ref = useRef<HTMLTextAreaElement>(null)
@@ -109,15 +112,92 @@ function CodeEditor({
   )
 }
 
+function CastParamsEditor({
+  cols, dtypeMap, onChange,
+}: {
+  cols:     string[]
+  dtypeMap: Record<string, string>
+  onChange: (map: Record<string, string>) => void
+}) {
+  if (!cols.length) return (
+    <p className='text-[11px] text-gray-400 mt-2'>Select columns above first.</p>
+  )
+  return (
+    <div className='mt-2 space-y-1.5'>
+      {cols.map(col => (
+        <div key={col} className='flex items-center gap-2'>
+          <span className='text-[11px] text-gray-600 w-32 truncate shrink-0'>{col}</span>
+          <select
+            value={dtypeMap[col] ?? ''}
+            onChange={e => onChange({ ...dtypeMap, [col]: e.target.value })}
+            className='text-xs border border-gray-200 rounded px-2 py-0.5 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary-400'
+          >
+            <option value='' disabled>dtype…</option>
+            {SUPPORTED_DTYPES.map(d => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function BinningParamsEditor({
+  cols, binsMap, onChange,
+}: {
+  cols:    string[]
+  binsMap: Record<string, { output_col: string; bins: number }>
+  onChange: (map: Record<string, { output_col: string; bins: number }>) => void
+}) {
+  if (!cols.length) return (
+    <p className='text-[11px] text-gray-400 mt-2'>Select columns above first.</p>
+  )
+  return (
+    <div className='mt-2 space-y-2'>
+      {cols.map(col => {
+        const cfg = binsMap[col] ?? { output_col: `${col}_bin`, bins: 5 }
+        return (
+          <div key={col} className='flex items-center gap-2 flex-wrap'>
+            <span className='text-[11px] text-gray-600 w-24 truncate shrink-0'>{col}</span>
+            <div className='flex items-center gap-1'>
+              <label className='text-[11px] text-gray-400'>→</label>
+              <input
+                type='text'
+                value={cfg.output_col}
+                onChange={e => onChange({ ...binsMap, [col]: { ...cfg, output_col: e.target.value } })}
+                placeholder='output_col'
+                className='text-xs border border-gray-200 rounded px-2 py-0.5 w-28 focus:outline-none focus:ring-1 focus:ring-primary-400'
+              />
+            </div>
+            <div className='flex items-center gap-1'>
+              <label className='text-[11px] text-gray-400'>bins</label>
+              <input
+                type='number'
+                min={2}
+                value={cfg.bins}
+                onChange={e => onChange({ ...binsMap, [col]: { ...cfg, bins: parseInt(e.target.value) || 5 } })}
+                className='text-xs border border-gray-200 rounded px-2 py-0.5 w-16 focus:outline-none focus:ring-1 focus:ring-primary-400'
+              />
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export function PreprocessStepCard({
   step, index, colTypeMap, onChange, onRemove, dragHandleProps,
 }: Props) {
-  const allCols       = Object.keys(colTypeMap)
-  const isCustomCode  = step.operation === 'custom_code'
-  const strategyOpts  = step.operation ? STRATEGY_OPTIONS[step.operation] : []
+  const allCols      = Object.keys(colTypeMap)
+  const isCustomCode = step.operation === 'custom_code'
+  const isCast       = step.operation === 'cast'
+  const isBinning    = step.strategy === 'binning'
+  const strategyOpts = step.operation ? STRATEGY_OPTIONS[step.operation] ?? [] : []
 
   const handleOperationChange = (op: string) => {
-    const strategies = STRATEGY_OPTIONS[op as keyof typeof STRATEGY_OPTIONS] ?? []
+    const strategies   = STRATEGY_OPTIONS[op as keyof typeof STRATEGY_OPTIONS] ?? []
     const autoStrategy = strategies.length === 1 ? strategies[0].value : null
     onChange({
       ...step,
@@ -132,7 +212,24 @@ export function PreprocessStepCard({
     onChange({ ...step, strategy: s, params: {}, cols: null })
   }
 
-  const needsCols = step.operation && !isCustomCode && step.strategy !== 'drop_row'
+  const handleColsChange = (cols: string[]) => {
+    const selected = cols.length ? cols : null
+    if (isCast) {
+      const prevMap   = (step.params.dtype_map as Record<string, string>) ?? {}
+      const dtype_map = Object.fromEntries((selected ?? []).map(c => [c, prevMap[c] ?? '']))
+      onChange({ ...step, cols: selected, params: { dtype_map } })
+    } else if (isBinning) {
+      const prevMap = (step.params.bins_map as Record<string, { output_col: string; bins: number }>) ?? {}
+      const bins_map = Object.fromEntries(
+        (selected ?? []).map(c => [c, prevMap[c] ?? { output_col: `${c}_bin`, bins: 5 }])
+      )
+      onChange({ ...step, cols: selected, params: { bins_map } })
+    } else {
+      onChange({ ...step, cols: selected })
+    }
+  }
+
+  const needsCols  = step.operation && !isCustomCode && step.strategy !== 'drop_row' && step.strategy !== 'drop_duplicates'
   const showParams = step.strategy && !isCustomCode
 
   return (
@@ -162,7 +259,7 @@ export function PreprocessStepCard({
             ))}
           </select>
 
-          {step.operation && !isCustomCode && (
+          {step.operation && !isCustomCode && strategyOpts.length > 1 && (
             <select
               value={step.strategy ?? ''}
               onChange={e => handleStrategyChange(e.target.value)}
@@ -186,7 +283,15 @@ export function PreprocessStepCard({
         </button>
       </div>
 
-      {/* Custom code editor */}
+      {needsCols && allCols.length > 0 && (
+        <div className='px-3 py-2 border-b border-gray-100 flex items-center justify-between'>
+          <span className='text-[11px] text-gray-400'>
+            Columns <span className='text-gray-300'>(all if none selected)</span>
+          </span>
+          <ColTypeLegend />
+        </div>
+      )}
+
       {isCustomCode && (
         <div className='px-3 pb-3'>
           <CodeEditor
@@ -196,7 +301,6 @@ export function PreprocessStepCard({
         </div>
       )}
 
-      {/* Params for standard operations */}
       {showParams && (
         <div className='px-3 pb-1'>
           {step.strategy === 'constant' && (
@@ -267,34 +371,70 @@ export function PreprocessStepCard({
               <label className='text-[11px] text-gray-500'>Range</label>
               <input
                 type='number' step='0.1'
-                value={((step.params.feature_range as [number,number]) ?? [0, 1])[0]}
-                onChange={e => onChange({ ...step, params: { ...step.params, feature_range: [parseFloat(e.target.value), ((step.params.feature_range as [number,number]) ?? [0, 1])[1]] } })}
+                value={((step.params.feature_range as [number, number]) ?? [0, 1])[0]}
+                onChange={e => onChange({ ...step, params: { ...step.params, feature_range: [parseFloat(e.target.value), ((step.params.feature_range as [number, number]) ?? [0, 1])[1]] } })}
                 className='text-xs border border-gray-200 rounded px-2 py-1 w-16 focus:outline-none focus:ring-1 focus:ring-primary-400'
               />
               <span className='text-gray-400 text-xs'>to</span>
               <input
                 type='number' step='0.1'
-                value={((step.params.feature_range as [number,number]) ?? [0, 1])[1]}
-                onChange={e => onChange({ ...step, params: { ...step.params, feature_range: [((step.params.feature_range as [number,number]) ?? [0, 1])[0], parseFloat(e.target.value)] } })}
+                value={((step.params.feature_range as [number, number]) ?? [0, 1])[1]}
+                onChange={e => onChange({ ...step, params: { ...step.params, feature_range: [((step.params.feature_range as [number, number]) ?? [0, 1])[0], parseFloat(e.target.value)] } })}
                 className='text-xs border border-gray-200 rounded px-2 py-1 w-16 focus:outline-none focus:ring-1 focus:ring-primary-400'
               />
+            </div>
+          )}
+
+          {step.strategy === 'drop_duplicates' && (
+            <div className='mt-2 flex items-center gap-3'>
+              <label className='text-[11px] text-gray-500'>Keep</label>
+              {(['first', 'last'] as const).map(k => (
+                <label key={k} className='flex items-center gap-1 text-xs text-gray-600 cursor-pointer'>
+                  <input
+                    type='radio'
+                    name={`keep-${step.id}`}
+                    value={k}
+                    checked={(step.params.keep ?? 'first') === k}
+                    onChange={() => onChange({ ...step, params: { ...step.params, keep: k } })}
+                  />
+                  {k}
+                </label>
+              ))}
+              <p className='text-[11px] text-gray-400 ml-1'>(columns below = subset, empty = all)</p>
             </div>
           )}
         </div>
       )}
 
-      {/* Column selector - not shown for custom_code */}
       {needsCols && allCols.length > 0 && (
-        <div className='px-3 pb-3'>
-          <p className='text-[11px] text-gray-400 mt-2 mb-1'>
-            Columns <span className='text-gray-300'>(all if none selected)</span>
-          </p>
+        <div className='px-3 pb-2'>
+          {(isCast || isBinning) && (
+            <p className='text-[11px] text-gray-400 mt-2 mb-1'>
+              {isCast ? 'Select columns to cast' : 'Select columns to bin'}
+            </p>
+          )}
           <ColSelector
             cols={allCols}
             colTypeMap={colTypeMap}
             selected={step.cols}
-            onChange={cols => onChange({ ...step, cols: cols.length ? cols : null })}
+            onChange={handleColsChange}
           />
+
+          {isCast && step.cols && step.cols.length > 0 && (
+            <CastParamsEditor
+              cols={step.cols}
+              dtypeMap={(step.params.dtype_map as Record<string, string>) ?? {}}
+              onChange={dtype_map => onChange({ ...step, params: { dtype_map } })}
+            />
+          )}
+
+          {isBinning && step.cols && step.cols.length > 0 && (
+            <BinningParamsEditor
+              cols={step.cols}
+              binsMap={(step.params.bins_map as Record<string, { output_col: string; bins: number }>) ?? {}}
+              onChange={bins_map => onChange({ ...step, params: { bins_map } })}
+            />
+          )}
         </div>
       )}
     </div>

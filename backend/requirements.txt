@@ -6,6 +6,7 @@ scipy
 openpyxl
 pyarrow
 fastparquet
+dill
 
 # LLM
 groq

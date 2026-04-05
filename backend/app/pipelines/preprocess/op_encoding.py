@@ -12,14 +12,6 @@ def _ensure_categorical(
     cols: list[str],
     strategy_name: str,
 ) -> pd.DataFrame:
-    """
-    For each col in cols:
-    - If dtype is already non-numeric  -> leave as-is.
-    - If dtype is numeric AND cardinality <= threshold -> cast to str silently.
-      These are label/ordinal columns that skipped the upstream astype layer.
-    - If dtype is numeric AND cardinality >  threshold -> raise TypeError.
-      These are genuine continuous columns passed to an encoding strategy by mistake.
-    """
     bad: list[str] = []
     df = df.copy()
     for col in cols:

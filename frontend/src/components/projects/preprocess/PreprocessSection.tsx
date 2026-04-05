@@ -21,7 +21,6 @@ import type { DraftStep, ColTypeMap } from './PreprocessTypes'
 import { draftToConfig, inferColTypes, suggestToSteps } from './PreprocessTypes'
 import { PreprocessStepCard } from './PreprocessStepCard'
 import { PreprocessPreview } from './PreprocessPreview'
-import { CostBadge } from '../../shared/CostBadge'
 
 function SortableStep({
   step, index, colTypeMap, onChange, onRemove,
@@ -197,10 +196,6 @@ export function PreprocessSection({
         <h2 className='text-sm font-semibold text-gray-700'>Preprocessing Pipeline</h2>
         <div className='flex items-center gap-2'>
 
-          {/* Cost badge - shown after suggest completes */}
-          {suggest.isDone && suggest.usage && (
-            <CostBadge usage={suggest.usage} label='Suggest' />
-          )}
 
           {preview && !preprocess.isRunning && (
             <button

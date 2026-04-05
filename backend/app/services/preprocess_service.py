@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import asyncio
 import io
-import sys
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -24,6 +22,9 @@ from app.pipelines.preprocess import (
     EncodingOperation, OneHotStrategy, OrdinalStrategy, LabelStrategy,
     OutlierOperation, IQRStrategy, ZScoreStrategy, PercentileClipStrategy,
     ScalingOperation, MinMaxStrategy, StandardStrategy, RobustStrategy,
+    DropOperation, DropColumnsStrategy, DropDuplicatesStrategy,
+    CastOperation, CastStrategy,
+    FeatureOperation, LambdaStrategy, BinningStrategy,
     CustomCodeOperation, CustomCodeStrategy,
 )
 from app.models.preprocess_schema import PreprocessRunRequest, OperationConfig
@@ -34,10 +35,9 @@ PREPROCESS_TTL = Config.PREPROCESS_TASK_TTL
 RESULT_NS  = "preprocess_result"
 RESULT_TTL = 60 * 30
 
-REVIEW_NS = "review_task"
-
-EDA_NS      = "eda_task"
-SUGGEST_NS  = "suggest_task"
+REVIEW_NS  = "review_task"
+EDA_NS     = "eda_task"
+SUGGEST_NS = "suggest_task"
 SUGGEST_TTL = Config.PREPROCESS_TASK_TTL
 
 PREVIEW_ROWS = 50
@@ -106,6 +106,23 @@ def _build_operation(cfg: OperationConfig):
                 "robust":   lambda: RobustStrategy(),
             }[s.type]()
             return ScalingOperation(strategy, cols=cols)
+
+        case "drop":
+            strategy = {
+                "drop_columns":    lambda: DropColumnsStrategy(),
+                "drop_duplicates": lambda: DropDuplicatesStrategy(keep=s.keep),
+            }[s.type]()
+            return DropOperation(strategy, cols=cols)
+
+        case "cast":
+            return CastOperation(CastStrategy(dtype_map=s.dtype_map), cols=cols)
+
+        case "feature":
+            strategy = {
+                "lambda":  lambda: LambdaStrategy(expressions=s.expressions),
+                "binning": lambda: BinningStrategy(bins_map=s.bins_map),
+            }[s.type]()
+            return FeatureOperation(strategy, cols=cols)
 
         case "custom_code":
             return CustomCodeOperation(CustomCodeStrategy(code=s.code), cols=None)

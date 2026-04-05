@@ -59,33 +59,55 @@ class CustomCodeStrategyConfig(BaseModel):
     type: Literal["custom_code"]
     code: str
 
-MissingStrategyConfig = (
+class DropColumnsStrategyConfig(BaseModel):
+    type: Literal["drop_columns"]
+
+class DropDuplicatesStrategyConfig(BaseModel):
+    type: Literal["drop_duplicates"]
+    keep: Literal["first", "last"] = "first"
+
+class CastStrategyConfig(BaseModel):
+    type: Literal["cast"]
+    dtype_map: dict[str, str]
+
+class LambdaStrategyConfig(BaseModel):
+    type: Literal["lambda"]
+    expressions: list[dict[str, Any]]
+
+class BinningStrategyConfig(BaseModel):
+    type: Literal["binning"]
+    bins_map: dict[str, dict]
+
+
+MissingStrategyConfig  = (
     MeanStrategyConfig | MedianStrategyConfig | ModeStrategyConfig |
     ConstantStrategyConfig | DropRowStrategyConfig | DropColStrategyConfig
 )
 EncodingStrategyConfig = OneHotStrategyConfig | OrdinalStrategyConfig | LabelStrategyConfig
 OutlierStrategyConfig  = IQRStrategyConfig | ZScoreStrategyConfig | PercentileClipStrategyConfig
 ScalingStrategyConfig  = MinMaxStrategyConfig | StandardStrategyConfig | RobustStrategyConfig
+DropStrategyConfig     = DropColumnsStrategyConfig | DropDuplicatesStrategyConfig
+FeatureStrategyConfig  = LambdaStrategyConfig | BinningStrategyConfig
 
 
 class MissingOperationConfig(BaseModel):
     operation: Literal["missing"]
-    strategy: MissingStrategyConfig
+    strategy: Annotated[MissingStrategyConfig, Field(discriminator="type")]
     cols: list[str] | None = None
 
 class EncodingOperationConfig(BaseModel):
     operation: Literal["encoding"]
-    strategy: EncodingStrategyConfig
+    strategy: Annotated[EncodingStrategyConfig, Field(discriminator="type")]
     cols: list[str] | None = None
 
 class OutlierOperationConfig(BaseModel):
     operation: Literal["outlier"]
-    strategy: OutlierStrategyConfig
+    strategy: Annotated[OutlierStrategyConfig, Field(discriminator="type")]
     cols: list[str] | None = None
 
 class ScalingOperationConfig(BaseModel):
     operation: Literal["scaling"]
-    strategy: ScalingStrategyConfig
+    strategy: Annotated[ScalingStrategyConfig, Field(discriminator="type")]
     cols: list[str] | None = None
 
 class CustomCodeOperationConfig(BaseModel):
@@ -93,11 +115,29 @@ class CustomCodeOperationConfig(BaseModel):
     strategy: CustomCodeStrategyConfig
     cols: None = None
 
+class DropOperationConfig(BaseModel):
+    operation: Literal["drop"]
+    strategy: Annotated[DropStrategyConfig, Field(discriminator="type")]
+    cols: list[str] | None = None
+
+class CastOperationConfig(BaseModel):
+    operation: Literal["cast"]
+    strategy: CastStrategyConfig
+    cols: list[str]
+
+class FeatureOperationConfig(BaseModel):
+    operation: Literal["feature"]
+    strategy: Annotated[FeatureStrategyConfig, Field(discriminator="type")]
+    cols: list[str] | None = None
+
+
 OperationConfig = Annotated[
     MissingOperationConfig | EncodingOperationConfig | OutlierOperationConfig
-    | ScalingOperationConfig | CustomCodeOperationConfig,
+    | ScalingOperationConfig | CustomCodeOperationConfig
+    | DropOperationConfig | CastOperationConfig | FeatureOperationConfig,
     Field(discriminator="operation"),
 ]
+
 
 class PreprocessRunRequest(BaseModel):
     file_id: int
